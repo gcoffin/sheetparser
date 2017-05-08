@@ -6,7 +6,7 @@ setup(name='sheetparser',
       url='http://github.com/gcoffin/sheetparser',
       author='Guillaume Coffin',
       author_email='guill.coffin@gmail.com',
-      license='LGPLv3',
+      license='GPLv3',
       packages=['sheetparser','sheetparser.backends','sheetparser.tests'],
       package_data = {
         'sheetparser.tests': ['test_table1.xlsx']
@@ -23,7 +23,7 @@ setup(name='sheetparser',
         'Intended Audience :: Developers',
         
         # Pick your license as you wish (should match "license" above)
-        'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.

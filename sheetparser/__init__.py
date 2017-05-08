@@ -19,8 +19,9 @@ through packages such as openpyxl and xlrd), and configured to recognize
 advanced layouts.
 
 (c) 2017 Guillaume Coffin
-Licensed under the GNU Lesser General Public Licence v3 (LGPLv3)
-https://www.gnu.org/copyleft/lesser.html
+
+Licensed under the GNU General Public Licence v3 (GPLv3)
+https://www.gnu.org/licenses/gpl-3.0.txt
 """
 
 __version__ = "0.1a1"
@@ -44,4 +45,3 @@ __all__ = ['DoesntMatchException', 'QuickPrint', 'PythonObjectContext',
            'Columns', 'Document', 'BORDER_TOP', 'BORDER_LEFT', 'BORDER_BOTTOM',
            'BORDER_RIGHT', 'BORDERS_VERTICAL', 'BORDERS_HORIZONTAL', 'EMPTY_CELL',
            'numrow', 'RbColIterator', 'RbRowIterator', 'load_backend', 'load_workbook']
-

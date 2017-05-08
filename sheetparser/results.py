@@ -111,6 +111,9 @@ class ResultDict(ResultObject, dict):
     def __getattr__(self, name):
         return self[name]
 
+    def __repr__(self):
+        return "Dict %s (%s)" % (
+            self.name,dict.__repr__(self))
 
 class ResultList(ResultObject, list):
     def visit(self, visitor):
@@ -124,12 +127,9 @@ class ResultList(ResultObject, list):
         self.append(value)
 
     def __repr__(self):
-        return ("<ResultList %s %s>" %
+        return ("List %s (%s)" %
                 (self.name,
-                 ', '.join("<%s %s>" %
-                           (type(i).__name__, i) for i in self)))
-
-
+                 ', '.join(str(i) for i in self)))
 
 
 def _rindex(lst, x):
@@ -157,7 +157,8 @@ class StripLine(object):
 
 
 def non_empty(line):
-    '''A transformer that matches only non empty lines'''
+    '''A transformer that matches only non empty lines. Other will
+    raise a DoesntMatchException'''
     if not line:
         raise DoesntMatchException('Empty line')
     return line
@@ -166,6 +167,11 @@ def non_empty(line):
 class Match(object):
     '''A transformer that matches lines that contain the given
     regex. Use combine to decide if all or any item should match
+
+    :param regex regex: a regular expression
+    :param list position: a list of positions or a slice
+    :param function combine: function that decides if the whole line
+        matches
     '''
     def __init__(self, regex, position=None, combine=None):
         self.regex = re.compile(regex)
@@ -205,6 +211,8 @@ class ResultLine(ResultObject, list):
         self[:] = line
 
 class ResultTable(ResultObject):
+    '''An object to store the content of a matched Table.
+This is a'''
     def __init__(self, name, transforms=None , iffail='no match'):
         self.name = name
         self.data = []
@@ -217,7 +225,6 @@ class ResultTable(ResultObject):
                        'fail': None}[iffail]
 
     def append_table(self, line):
-        line = [c.value for c in line]
         for transform in self.transforms:
             line = transform.process_line(self, line)
             if line is None:
@@ -225,27 +232,27 @@ class ResultTable(ResultObject):
         self.count += 1
 
     def wrap(self):
-        for transform in self.transforms:
-            if hasattr(transform, 'wrap'):
-                try:
-                    transform.wrap(self)
-                except Exception as e:
-                    if self.iffail is not None:
-                        raise
-                        six.raise_from(DoesntMatchException, e)
-                    else:
-                        raise
-
-    def __str__(self):
-        return "TABLE"
+        for transform in self.transforms:            
+            try:
+                transform.wrap(self)
+            except Exception as e:
+                if self.iffail is not None:
+                    raise
+                    six.raise_from(DoesntMatchException, e)
+                else:
+                    raise
 
     def __repr__(self):
-        return "<RTableWP %s>" % self.data
+        return "Table %s (%s)" % (self.name, self.data)
 
 
 class PythonObjectContext(ResultContext):
-    types = {'list': ResultList, 'dict': ResultDict,
-             'line': ResultLine, 'table': ResultTable}
+    """Store the results are a hierarchy of objects that mimics the
+    initial hierarchy of patterns"""
+    types = {'list': ResultList,
+             'dict': ResultDict,
+             'line': ResultLine, 
+             'table': ResultTable}
 
     def __init__(self):
         super(PythonObjectContext, self).__init__()
@@ -271,29 +278,33 @@ class PythonObjectContext(ResultContext):
 
 
 class ListContext(PythonObjectContext):
-
-    class DefaultResult(list):
+    '''a context that returns a dictionary where the key is the name
+    of the pattern'''
+    class DefaultResult(dict):
         def __init__(self,name):
             self.name = name
-            list.__init__(self)
-        def append(self,args):
-            list.append(self,args)
+            dict.__init__(self)
+        def append(self,arg):
+            name, value = arg
+            self.setdefault(name,[]).append(value)
 
-    types = { 'list':DefaultResult,
-              'dict':DefaultResult,
-              'line': ResultLine, 'table': ResultTable }
+    types = { 'list': DefaultResult,
+              'dict': DefaultResult,
+              'line': ResultLine,
+              'table': ResultTable }
 
     def emit(self, name, o):
         self.current.append((name, o))
 
     def commit(self, o1, o2):
         if isinstance(o2,ListContext.DefaultResult):
-            o1.extend(o2)
+            o1.update(o2)
         else:
             o1.append((o2.name,o2))
 
 
 class DebugContext(ListContext):
+    '''A result context that implements the debug function'''
     def debug(self,*args):
         print(' '*len(self.stack),*args)
 
@@ -322,13 +333,26 @@ class TableNotEmpty(TableTransform):
         if not table.data:
             raise DoesntMatchException('TableNotEmpty failed: No data in table')
 
+class GetValue(TableTransform):
+    """Transforms a list of cells into a list of strings. All built in
+    processors expect GetValue to be included as the first
+    transformation."""
+    def process_line(self,table,line):
+        return [x.value for x in line]
 
 class FillData(TableTransform):
+    """Adds the line to the table data"""
     def process_line(self, table, line):
         table.data.append(line)
 
 
 class HeaderTableTransform(TableTransform):
+    """Extract the first lines and first columns
+    as the top and left headers
+
+    :param int top_header: number of lines, 1 by default
+    :param int left_column: number of columns, 1 by default
+    """
     def __init__(self, top_header=1, left_column=1):
         self.top_header = top_header
         self.left_column = left_column
@@ -338,6 +362,7 @@ class HeaderTableTransform(TableTransform):
             return
         if table.count == 0:
             table.top_headers = []
+            table.left_headers = []
         if self.left_column:
             col = line[:self.left_column]
             line = line[self.left_column:]
@@ -358,6 +383,7 @@ class HeaderTableTransform(TableTransform):
 
 
 class RepeatExisting(TableTransform):
+    '''Replaces empty strings with previous data'''
     def wrap(self, table):
         table.top_headers = [_repeat_existing(i) for i in table.top_headers]
 
@@ -367,7 +393,8 @@ def _find_non_empty_rows(list_of_lists):
             if any(x != EMPTY_CELL for x in line)]
 
 class RemoveEmptyLines(TableTransform):
-    '''could be really simplified with numpy'''
+    '''Remove empyt lines or empty columns in the table. Note: could
+    be really simplified with numpy'''
     def __init__(self, line_type='rows'):
         if line_type not in ['rows', 'columns']:
             raise ConfigurationError(
@@ -380,13 +407,17 @@ class RemoveEmptyLines(TableTransform):
             Transpose().wrap(table)
         data_rows = _find_non_empty_rows(table.data)
         table.data = [table.data[i] for i in data_rows] 
-        tlf = transpose(table.left_headers)
-        table.left_headers = transpose(tlf[i] for i in data_rows)
+        if hasattr(table,'left_headers'):
+            tlf = transpose(table.left_headers)
+            table.left_headers = transpose(tlf[i] for i in data_rows)
         if self.line_type == 'columns':
             Transpose().wrap(table)
 
 
 class ToMap(TableTransform):
+    """Transforms the data from a list of lists to a map. The keys are
+    the combination of terms in the headers (top and left) and the
+    values are the table data"""
     def wrap(self, table):
         result = {}
         for lefts, row in zip(zip(*table.left_headers), table.data):
@@ -401,6 +432,7 @@ def _join_header(lines, char):
 
 
 class MergeHeader(TableTransform):
+    """merges several lines in the header into one"""
     def __init__(self, join_top=(), join_left=(), ch='.'):
         if not all(isinstance(i, int) for i in join_top):
             raise ConfigurationError('ids must be ints, got %s' % join_top)
@@ -428,12 +460,16 @@ def transpose(list_of_lists):
 
 
 class Transpose(TableTransform):
+    """Transforms lines into columns and columns to lines"""
     def wrap(self, table):
-        table.top_headers, table.left_headers = table.left_headers, table.top_headers
+        if hasattr(table,'top_headers') and hasattr(table,'left_headers'):
+            table.top_headers, table.left_headers = table.left_headers, table.top_headers
         table.data = transpose(table.data)
 
 
 class ToDate(TableTransform):
+    """Transforms strings into dates in the header. Use merge if the
+    date is spread over several lines"""
     def __init__(self, header_id, strftime, is_top=True, join='/'):
         self.header_id = header_id
         self.is_top = is_top
@@ -466,4 +502,4 @@ def _repeat_existing(line):
     return result
 
 
-DEFAULT_TRANFORMS = [HeaderTableTransform, FillData, TableNotEmpty]
+DEFAULT_TRANFORMS = [GetValue, HeaderTableTransform, FillData, TableNotEmpty]

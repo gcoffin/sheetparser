@@ -37,11 +37,11 @@ __all__ = ['DoesntMatchException', 'QuickPrint', 'PythonObjectContext',
            'ListContext', 'Sequence', 'Many', 'Maybe', 'Workbook', 'Range',
            'Sheet', 'no_vertical', 'no_horizontal', 'empty_line',
            'TableNotEmpty', 'FillData',
+           'get_value', 'Match', 'StripLine','GetValue',
            'HeaderTableTransform', 'RepeatExisting', 'RemoveEmptyLines', 'ToMap',
            'MergeHeader', 'Transpose', 'ToDate', 'Table', 'DEFAULT_TRANFORMS',
            'CellRange', 'ResultContext', 'FlexibleRange', 'Line', 'Empty', 'Rows',
            'Columns', 'Document', 'BORDER_TOP', 'BORDER_LEFT', 'BORDER_BOTTOM',
            'BORDER_RIGHT', 'BORDERS_VERTICAL', 'BORDERS_HORIZONTAL', 'EMPTY_CELL',
-           'numrow', 'RbColIterator', 'RbRowIterator', 'load_backend', 'load_workbook',
-           'get_value', 'Match', 'StripLine']
+           'numrow', 'RbColIterator', 'RbRowIterator', 'load_backend', 'load_workbook']
 

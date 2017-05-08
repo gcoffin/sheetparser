@@ -123,11 +123,13 @@ class opxlExcelWorkbook(WorkbookDocument):
     def __init__(self, filename, with_formatting=True):
         # I'd like to open it readonly but then the merged cells 
         # are not loaded
+        print('open')
         if with_formatting:
             self.wbk_fmt = openpyxl.load_workbook(filename=filename)
         else:
             self.wbk_fmt = None
         # and we need the data too because cell values are the formulas!!
+            print('open data')
         self.wbk_data = openpyxl.load_workbook(filename=filename, data_only=True)
         
     def __iter__(self):

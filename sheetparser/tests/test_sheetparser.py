@@ -9,7 +9,7 @@ from sheetparser import (Document, CellRange, RbColIterator, RbRowIterator,
                          Range, Table, FillData, HeaderTableTransform,
                          RemoveEmptyLines, Empty, FlexibleRange, Transpose,
                          Workbook, BORDERS_VERTICAL, DEFAULT_TRANFORMS,
-                         ListContext, RepeatExisting, MergeHeader,
+                         ListContext, RepeatExisting, MergeHeader, GetValue,
                          ToMap, TableNotEmpty, no_horizontal, ToDate, get_value,
                          Match, empty_line, DebugContext, StripLine
                          )
@@ -128,31 +128,31 @@ class TestArray(unittest.TestCase):
 
 class TestSimpleExcel(unittest.TestCase):
     def setUp(self):
-        load_backend('_xlrd')
+        load_backend('sheetparser.backends._xlrd')
         self.wbk = load_workbook(os.path.join(os.path.dirname(__file__), 'test_table1.xlsx'), with_formatting=False)
         self.sheet = self.wbk['Sheet1']
 
     def test_pattern1(self):
         pattern = Range('sheet', Rows,
-                        Table('t11', table_args=[HeaderTableTransform, FillData]))
+                        Table('t11', table_args=[GetValue, HeaderTableTransform, FillData]))
         range = CellRange(self.sheet, 1, 1, 5, 5)
         context = ListContext()
         pattern.match_range(range, context)
         self.assertEqual(len(context.root), 2)
-        (name, tableresult) = context.root[1]
-        self.assertEqual(name, 't11')
+        tableresult, = context.root['t11']
+        self.assertEqual(tableresult.name, 't11')
         self.assertSequenceEqual(tableresult.top_headers, [['a', 'b', 'c']])
         self.assertSequenceEqual(tableresult.left_headers, [[1, 2, 3]])
         self.assertSequenceEqual(tableresult.data, [['a11', 'b11', 'c11'], ['a21', 'b21', 'c21'], ['a31', 'b31', 'c31']])
 
     def test_pattern2(self):
-        pattern = Range('sheet', Rows, Table('t21', table_args=[HeaderTableTransform(1, 1), FillData, RemoveEmptyLines('columns')]))
+        pattern = Range('sheet', Rows, Table('t21', table_args=[GetValue, HeaderTableTransform(1, 1), FillData, RemoveEmptyLines('columns')]))
         range = CellRange(self.sheet, 1, 1, 5, 10)
         context = ListContext()
         pattern.match_range(range, context)
         self.assertEqual(len(context.root), 2)
-        (name, tableresult) = context.root[1]
-        self.assertEqual(name, 't21')
+        tableresult, = context.root['t21']
+        self.assertEqual(tableresult.name, 't21')
         self.assertSequenceEqual(tableresult.top_headers, [['a', 'b', 'c']])
         self.assertSequenceEqual(tableresult.left_headers, [[1, 2, 3]])
         self.assertSequenceEqual(tableresult.data, [['a11', 'b11', 'c11'], ['a21', 'b21', 'c21'], ['a31', 'b31', 'c31']])
@@ -160,26 +160,27 @@ class TestSimpleExcel(unittest.TestCase):
     def test_pattern3(self):
         pattern = Sheet('sheet', Rows,
                         Empty,
-                        Table('t31', table_args=[HeaderTableTransform(1, 2), FillData, RemoveEmptyLines('columns')]),
+                        Table('t31', table_args=[GetValue, HeaderTableTransform(1, 2),
+                                                 FillData, RemoveEmptyLines('columns')]),
                         Empty,
                         FlexibleRange('t32',
                                       Columns,
                                       Empty,
-                                      Table('t33', table_args=[HeaderTableTransform, FillData,
-                                                                  RemoveEmptyLines('columns')]),
+                                      Table('t33', table_args=[GetValue, HeaderTableTransform, FillData,
+                                                               RemoveEmptyLines('columns')]),
                                       Empty,
-                                      Table('t34', table_args=[HeaderTableTransform, FillData,
-                                                                  Transpose, RemoveEmptyLines])
+                                      Table('t34', table_args=[GetValue, HeaderTableTransform, FillData,
+                                                               Transpose, RemoveEmptyLines])
                                       ))
         context = ListContext()
         pattern.match_range(self.sheet, context)
         d = dict(context.root)
-        self.assertEqual(len(context.root), 5)
-        tableresult = d['t31']
+        self.assertEqual(len(context.root), 4)
+        tableresult = d['t31'][0]
         self.assertSequenceEqual(tableresult.top_headers, [['a', 'b', 'c']])
         self.assertSequenceEqual(tableresult.left_headers, [['', '', ''], [1, 2, 3]])
         self.assertSequenceEqual(tableresult.data, [['a11', 'b11', 'c11'], ['a21', 'b21', 'c21'], ['a31', 'b31', 'c31']])
-        self.assertSequenceEqual(d['t34'].data, [['a13', 'b13', 'c13'], ['a23', 'b23', 'c23'], ['a33', 'b33', 'c33']])
+        self.assertSequenceEqual(d['t34'][0].data, [['a13', 'b13', 'c13'], ['a23', 'b23', 'c23'], ['a33', 'b33', 'c33']])
 
     def test_wbk(self):
         pattern = Workbook({'Sheet1': Sheet('sheet', Rows, Many(Line(name='line')|Empty))})
@@ -201,7 +202,8 @@ class TestSimpleExcel(unittest.TestCase):
     def test_sequence2(self):
         sheet = self.wbk['Sheet2']
         pattern = Sheet('sheet', Rows,
-                       Many( (Table('t1', table_args=[HeaderTableTransform, TableNotEmpty, FillData, ])+Empty) | Line('line'))
+                       Many( (Table('t1', table_args=[GetValue, HeaderTableTransform, 
+                                                      TableNotEmpty, FillData, ])+Empty) | Line('line'))
                         )
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
@@ -211,7 +213,7 @@ class TestSimpleExcel(unittest.TestCase):
 
 class TestOpenpyxl(unittest.TestCase):
     def setUp(self):
-        load_backend('_openpyxl')
+        load_backend('sheetparser.backends._openpyxl')
         self.wbk = load_workbook(
             os.path.join(os.path.dirname(__file__),
                          'test_table1.xlsx'),
@@ -232,22 +234,22 @@ class TestOpenpyxl(unittest.TestCase):
         context = ListContext() #PythonObjectContext
         pattern.match_workbook(self.wbk, context)
         result = dict(context.root)
-        self.assertEqual(result['table'].top_left, [['This']])
-        self.assertEqual(result['table'].data, [[1, ''], ['', 1], [2, '']])
+        self.assertEqual(result['table'][0].top_left, [['This']])
+        self.assertEqual(result['table'][0].data, [[1, ''], ['', 1], [2, '']])
 
 
     def test_merged(self):
         pattern = Workbook({'Sheet4':
-                            Sheet('sheet', Rows,
-                                  Empty, Table(table_args=[HeaderTableTransform(2), FillData,
-                                                                RepeatExisting, MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b')]))
+                                Sheet('sheet', Rows,
+                                      Empty, Table(table_args=[GetValue, HeaderTableTransform(2), FillData,
+                                                               RepeatExisting, MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b')]))
                             })
         context = ListContext() #PythonObjectContext
         pattern.match_workbook(self.wbk, context)
         result = dict(context.root)
-        self.assertEqual(result['table'].top_left, [['Year', 'Date']])
-        self.assertEqual(result['table'].data, [[10, 12, 4], [5, 17, 4]])
-        self.assertEqual(result['table'].top_headers, [[datetime.datetime(2017, i, 1) for i in [1, 2, 3]]])
+        self.assertEqual(result['table'][0].top_left, [['Year', 'Date']])
+        self.assertEqual(result['table'][0].data, [[10, 12, 4], [5, 17, 4]])
+        self.assertEqual(result['table'][0].top_headers, [[datetime.datetime(2017, i, 1) for i in [1, 2, 3]]])
 
 
     def test_merged2(self):
@@ -256,9 +258,9 @@ class TestOpenpyxl(unittest.TestCase):
                                   Empty,
                                   Table('ignore'),
                                   Many(Empty, 2),
-                                  Table(table_args=[HeaderTableTransform(3), FillData,
-                                                          RepeatExisting, MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b'),
-                                                          ToMap]))
+                                  Table(table_args=[GetValue, HeaderTableTransform(3), FillData,
+                                                    RepeatExisting, MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b'),
+                                                    ToMap]))
                             })
         context = ListContext() #PythonObjectContext
         pattern.match_workbook(self.wbk, context)
@@ -269,20 +271,20 @@ class TestOpenpyxl(unittest.TestCase):
                     ('Rachel', 'Actual', datetime.datetime(2017, 1, 1)): 5,
                     ('Rachel', 'Actual', datetime.datetime(2017, 2, 1)): 17,
                     ('Rachel', 'Forecast', datetime.datetime(2017, 3, 1)): 4}
-        self.assertEqual(result['table'].top_left, [['Table 2', 'Date', 'type']])
-        self.assertEqual(result['table'].data, expected)
+        self.assertEqual(result['table'][0].top_left, [['Table 2', 'Date', 'type']])
+        self.assertEqual(result['table'][0].data, expected)
 
 
 class TestWin32(unittest.TestCase):
     def setUp(self):
-        load_backend('_win32com')
+        load_backend('sheetparser.backends._win32com')
         self.wbk = load_workbook(os.path.join(os.path.dirname(__file__), 'test_table1.xlsx'), with_formatting=False)
         self.sheet = self.wbk['Sheet1']
 
 
 class TestFlexibleRange(unittest.TestCase):
     def setUp(self):
-        load_backend('_openpyxl')
+        load_backend('sheetparser.backends._openpyxl')
         self.wbk = load_workbook(os.path.join(os.path.dirname(__file__), 'test_table1.xlsx'), with_formatting=True)
         self.sheet = self.wbk['Sheet1']
 
@@ -306,20 +308,20 @@ class TestFlexibleRange(unittest.TestCase):
         pattern = Sheet('result', Columns,
                         FlexibleRange('yellow',
                                       Rows, Line,
-                                      Table(table_args=[HeaderTableTransform(0, 1),
+                                      Table(table_args=[GetValue, HeaderTableTransform(0, 1),
                                                         FillData]),
                                       stop= has_nocolor
                                       ))
         context = ListContext()
         pattern.match_range(self.wbk['Sheet5'], context)
         dct = dict(context.root)
-        self.assertEquals(dct['table'].data,
+        self.assertEquals(dct['table'][0].data,
                           [[1, 2, 3], [3, 4, 5]])
 
 
 class TestComplex(unittest.TestCase):
     def test_complex(self):
-        load_backend('_openpyxl')
+        load_backend('sheetparser.backends._openpyxl')
         filename = os.path.join(os.path.dirname(__file__), 'test_table1.xlsx')
         print(filename)
         wbk = load_workbook(filename, with_formatting=True)
@@ -328,7 +330,7 @@ class TestComplex(unittest.TestCase):
                         Many(Empty),
                         FlexibleRange('f1',Rows,
                                       Many(Empty),
-                                      Table('t1',[HeaderTableTransform(2,1),FillData,RemoveEmptyLines('columns')],
+                                      Table('t1',[GetValue, HeaderTableTransform(2,1),FillData,RemoveEmptyLines('columns')],
                                             stop=no_horizontal), 
                                       Empty, 
                                       FlexibleRange('f2',Columns,
@@ -346,10 +348,10 @@ class TestComplex(unittest.TestCase):
                                       Table('t3',stop = no_horizontal)))
         context = ListContext()
         pattern.match_range(sheet, context)
-        dct= {k:v for k,v in context.root if not k.startswith('__')}
-        self.assertEquals(dct.keys(),{'t1','line2','line1','line3','t1','t2','t3'})
-        self.assertEquals(dct['line3'],['End'])
-        self.assertEquals(dct['t1'].top_left[0][0],'A more complex example')
-        self.assertEquals(dct['t2'].top_left,[['Yet another table']])
-        self.assertEquals(dct['t3'].top_left,[['Another table']])
+        dct= context.root
+        self.assertEquals(dct.keys(),{'__meta','t1','line2','line1','line3','t1','t2','t3'})
+        self.assertEquals(dct['line3'],[['End']])
+        self.assertEquals(dct['t1'][0].top_left[0][0],'A more complex example')
+        self.assertEquals(dct['t2'][0].top_left,[['Yet another table']])
+        self.assertEquals(dct['t3'][0].top_left,[['Another table']])
         

@@ -1,0 +1,8 @@
+#test file and example
+include sheetparser/tests/test_table1.xlsx
+
+#Misc
+include LICENSE
+include README.rst
+
+prune docs

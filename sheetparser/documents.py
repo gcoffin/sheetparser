@@ -142,6 +142,8 @@ class CellColumn(CellRange):
         return self.col+1
 
     def __getitem__(self, i):
+        if isinstance(i,slice):
+            return (self[j] for j in list(range(0,len(self)))[i])
         return self.rge.cell(self.top +
                              _abs_index(self, i), self.col)
 
@@ -168,6 +170,8 @@ class CellRow(CellRange):
         return self._row+1
 
     def __getitem__(self, i):
+        if isinstance(i,slice):
+            return (self[j] for j in list(range(0,len(self)))[i])
         return self.rge.cell(self._row,
                              self.left + _abs_index(self, i))
 
@@ -239,6 +243,7 @@ class WorkbookReader(dict):
         self['_openpyxl']=_openpyxl
 
     def __call__(self, filepath, with_formatting=False, with_backend=None):
+        backend = None
         if with_backend is None:
             __, ext = os.path.splitext(filepath)
             backend = self.get((ext, with_formatting),None)
@@ -246,7 +251,7 @@ class WorkbookReader(dict):
             if with_backend in self:
                 backend = self[with_backend]
             else:
-                self[with_backend] = load_backend(with_backend)
+                backend = self[with_backend] = load_backend(with_backend)
         if not backend:
             raise ConfigurationError("You need to import a backend that provides this functionality first")
         else:

@@ -184,10 +184,13 @@ class Match(object):
             self.position = position
 
     def __call__(self, line):
+        sline = line
+        if sline and not isinstance(sline[0],six.string_types):
+            sline = [cell.value for cell in line]
         if isinstance(self.position, slice):
-            if not self.combine(self.regex.match(p) for p in line[self.position]):
+            if not self.combine(self.regex.match(p) for p in sline[self.position]):
                 raise DoesntMatchException
-        elif not self.combine(self.regex.match(line[p]) for p in self.position):
+        elif not self.combine(self.regex.match(sline[p]) for p in self.position):
             raise DoesntMatchException
         return line
 
@@ -223,6 +226,8 @@ This is a'''
         self.transforms = instantiate_if_class_lst(transforms or [], TableTransform)
         self.iffail = {'no match': DoesntMatchException,
                        'fail': None}[iffail]
+        for transform in self.transforms:
+            transform.init(self)
 
     def append_table(self, line):
         for transform in self.transforms:
@@ -317,6 +322,9 @@ class DebugContext(ListContext):
         super(DebugContext,self).commit(*args)
 
 class TableTransform(object):
+    def init(self, table):
+        pass
+
     def wrap(self, table):
         pass
 
@@ -340,11 +348,11 @@ class GetValue(TableTransform):
     def process_line(self,table,line):
         return [x.value for x in line]
 
+
 class FillData(TableTransform):
     """Adds the line to the table data"""
     def process_line(self, table, line):
         table.data.append(line)
-
 
 class HeaderTableTransform(TableTransform):
     """Extract the first lines and first columns
@@ -357,24 +365,25 @@ class HeaderTableTransform(TableTransform):
         self.top_header = top_header
         self.left_column = left_column
 
+    def init(self, table):
+        table.left_headers = [[] for i in range(self.left_column)]
+        table.top_left = [[] for i in range(self.left_column)]
+        table.top_headers = []
+
+    def _append_to_cols(self,columns,line):
+        for h, c in zip(columns, line):
+            h.append(c)
+
     def process_line(self, table, line):
         if not line:
             return
-        if table.count == 0:
-            table.top_headers = []
-            table.left_headers = []
         if self.left_column:
-            col = line[:self.left_column]
+            left = line[:self.left_column]
             line = line[self.left_column:]
-            if table.count == 0:
-                table.left_headers = [[] for i in range(self.left_column)]
-                table.top_left = [[] for i in range(self.left_column)]
             if table.count >= self.top_header:
-                for h, c in zip(table.left_headers, col):
-                    h.append(c)
+                self._append_to_cols(table.left_headers, left)
             else:
-                for h, c in zip(table.top_left, col):
-                    h.append(c)
+                self._append_to_cols(table.top_left, left)
         if self.top_header and table.count < self.top_header:
             table.top_headers.append(line)
         else:
@@ -384,9 +393,14 @@ class HeaderTableTransform(TableTransform):
 
 class RepeatExisting(TableTransform):
     '''Replaces empty strings with previous data'''
-    def wrap(self, table):
-        table.top_headers = [_repeat_existing(i) for i in table.top_headers]
+    def __init__(self,*rows):
+        self.rows = rows
 
+    def wrap(self, table):
+        result = []
+        for i,header in enumerate(table.top_headers):
+            result.append(_repeat_existing(header) if i in self.rows else header)
+        table.top_headers = result
 
 def _find_non_empty_rows(list_of_lists):
     return [i for i, line in enumerate(list_of_lists)

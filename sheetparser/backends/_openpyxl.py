@@ -18,20 +18,6 @@ from ..utils import EMPTY_CELL
 SHEETSTATE_VISIBLE = openpyxl.worksheet.Worksheet.SHEETSTATE_VISIBLE
 logger = logging.getLogger('sheetparser')
 
-
-class EmptyCell(object):
-    value = EMPTY_CELL
-
-    def is_empty(self):
-        return True
-
-    def has_borders(self, mask):
-        return False
-
-
-XL_EMPTY_CELL = EmptyCell()
-
-
 class opxlCell(object):
     def __init__(self, value, cell, wksheet_fmt, is_merged):
         self._cell = cell
@@ -64,18 +50,33 @@ class opxlCell(object):
     @property
     def color(self):
         return {k:float(v) for k,v in self._cell.fill.fgColor}
-
-    def color_hash(self):
-        # reading a color from openpyxl is feasible only when
-        # we're lucky (color is properly indexed)
-        # so we focus on the very basic: color or not, and some hash
-        try:
-            return self._cell.fill.start_color._key
-        except:
-            return None
     
     def is_empty(self):
         return self.value == EMPTY_CELL
+
+    def set_value(self,value):
+        print('VALUE',self._cell.row,self._cell.column,value)
+        self._cell.value = value
+
+class EmptyCell(opxlCell):
+
+    value = EMPTY_CELL
+
+    def __init__(self, column, row, sheet):
+        self.column = column
+        self.row = row
+        super(EmptyCell,self).__init__(None, None, sheet, False)
+
+    def has_borders(self, mask):
+        if self._cell is None:
+            return False
+        return super(EmptyCell).has_borders(mask)
+
+    def set_value(self,value):
+        print('SET EMPTY',self.row,self.column,value)
+        if self._cell is None:
+            self._cell = self.sheet.cell(column=self.column, row=self.row)
+        self._cell.value = value
 
 
 class opxlExcelSheet(CellRange, SheetDocument):
@@ -112,7 +113,7 @@ class opxlExcelSheet(CellRange, SheetDocument):
                  if self.wksheet_fmt else None),
                 self.wksheet_fmt, is_merged)
         except IndexError:
-            return XL_EMPTY_CELL
+            return EmptyCell(row,col,self.wksheet_fmt)
 
     def __repr__(self):
         return "<opxlExcelSheet %s>" % self.name
@@ -123,13 +124,11 @@ class opxlExcelWorkbook(WorkbookDocument):
     def __init__(self, filename, with_formatting=True):
         # I'd like to open it readonly but then the merged cells 
         # are not loaded
-        print('open')
         if with_formatting:
             self.wbk_fmt = openpyxl.load_workbook(filename=filename)
         else:
             self.wbk_fmt = None
         # and we need the data too because cell values are the formulas!!
-            print('open data')
         self.wbk_data = openpyxl.load_workbook(filename=filename, data_only=True)
         
     def __iter__(self):

@@ -14,7 +14,7 @@ Available documentation on http://sheetparser.readthedocs.io/en/latest/
 Installation
 ------------
 
-To install Requests, simply:
+To install sheetparser:
 
 .. code-block:: bash
 

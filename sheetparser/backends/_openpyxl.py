@@ -26,6 +26,9 @@ class opxlCell(object):
         self._border_mask = None
         self.is_merged = is_merged
 
+    def __repr__(self):
+        return "<opxlCell %s %s>" % (self._cell.row, self._cell.column)
+        
     @property
     def border_mask(self):
         if self._border_mask is None:
@@ -55,8 +58,10 @@ class opxlCell(object):
         return self.value == EMPTY_CELL
 
     def set_value(self,value):
-        print('VALUE',self._cell.row,self._cell.column,value)
         self._cell.value = value
+
+    def set_style(self,style):
+        self._cell.style = style
 
 class EmptyCell(opxlCell):
 

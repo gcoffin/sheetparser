@@ -143,7 +143,7 @@ class CellColumn(CellRange):
 
     def __getitem__(self, i):
         if isinstance(i,slice):
-            return (self[j] for j in list(range(0,len(self)))[i])
+            return [self[j] for j in list(range(0,len(self)))[i]]
         return self.rge.cell(self.top +
                              _abs_index(self, i), self.col)
 
@@ -171,7 +171,7 @@ class CellRow(CellRange):
 
     def __getitem__(self, i):
         if isinstance(i,slice):
-            return (self[j] for j in list(range(0,len(self)))[i])
+            return [self[j] for j in list(range(0,len(self)))[i]]
         return self.rge.cell(self._row,
                              self.left + _abs_index(self, i))
 

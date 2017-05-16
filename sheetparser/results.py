@@ -113,7 +113,7 @@ class ResultDict(ResultObject, dict):
 
     def __repr__(self):
         return "Dict %s (%s)" % (
-            self.name,dict.__repr__(self))
+            self.name,list(self.keys()))
 
 class ResultList(ResultObject, list):
     def visit(self, visitor):
@@ -281,6 +281,10 @@ class PythonObjectContext(ResultContext):
     def __getitem__(self, name):
         return self.root[name]
 
+    def __repr__(self):
+        return "<PythonObjectContext %s>" % self.root
+
+    __str__ = __repr__
 
 class ListContext(PythonObjectContext):
     '''a context that returns a dictionary where the key is the name

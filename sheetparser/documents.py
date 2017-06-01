@@ -116,6 +116,13 @@ class CellRange(Document):
         return "<CellRange %s %s>" % (
             self.rge, (self.top, self.left, self.bottom, self.right))
 
+    def rows(self):
+        for row in range(0,self.height):
+            yield CellRow(self,row)
+
+    def __str__(self):
+        return 'CellRange:<%s>' % (str(list(str(row) for row in self.rows())))
+
 def _abs_index(rge, i):
     if i < 0:
         i = len(rge) + i
@@ -152,6 +159,9 @@ class CellColumn(CellRange):
 
     def __repr__(self):
         return "<CellColumn %s %s>" % (self.rge, self.col)
+
+    def __str__(self):
+        return 'CellColumn:'+str([i.value for i in self])
 
 
 class CellRow(CellRange):

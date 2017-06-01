@@ -10,7 +10,7 @@ import six
 
 from .utils import (DoesntMatchException, ConfigurationError, EMPTY_CELL,
                     instantiate_if_class, instantiate_if_class_lst)
-from .results import DEFAULT_TRANFORMS
+from .results import DEFAULT_TRANSFORMS
 from .documents import (CellRange, WorkbookDocument, SheetDocument,
                         RbRowIterator, RbColIterator, BORDERS_VERTICAL,
                         BORDERS_HORIZONTAL)
@@ -221,6 +221,7 @@ class Workbook(Pattern):
             raise ConfigurationError("Expected Workbook, got %s" % doc)
 
     def _match_range_s(self, sheet, pattern_s, context):
+        context.debug('sheet', sheet)
         if isinstance(pattern_s, Pattern):
             pattern_s = [pattern_s]
         for pattern in pattern_s:
@@ -244,6 +245,7 @@ class Workbook(Pattern):
             for s in workbook:
                 if s.is_hidden() and not self.include_hidden:
                     continue
+                context.debug('workbook',repr(s.name),names_dct)
                 if s.name in names_dct:
                     self._match_range_s(s, names_dct.pop(s.name), context)
                 else:
@@ -334,7 +336,7 @@ class Sheet(WithLayoutPattern):
 
 def empty_line(cells):
     """returns true if all cells are empty"""
-    return all(cell.is_empty() for cell in cells)
+    return all(cell.is_empty for cell in cells)
 
 
 def no_vertical(cells, line_count):  # could do better than that
@@ -362,7 +364,7 @@ class Table(NamedPattern, LineIteratorPattern):
         and the line itself. By default, will stop on empty lines
     """
     @default(str_or_none, name='table')
-    def __init__(self, name, table_args=DEFAULT_TRANFORMS, stop=None):
+    def __init__(self, name, table_args=DEFAULT_TRANSFORMS, stop=None):
         self.stop = stop or first_param(empty_line)
         assert callable(self.stop), "stop is not callable: %s" % stop
         self.table_args = table_args
@@ -426,6 +428,7 @@ class FlexibleRange(WithLayoutPattern):
             raise DoesntMatchException(
                 'Flexible range %s has %d lines, max is %d' % (self.name, linecount, self.max))
         rge = CellRange(s.rge, top, left, bottom, right)
+        context.debug('FlexibleRange',rge)
         super(FlexibleRange, self).match_range(rge, context)
 
     def emit_meta(self, sheet, context):

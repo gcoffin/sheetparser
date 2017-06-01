@@ -8,7 +8,7 @@ from sheetparser import (Document, CellRange, RbColIterator, RbRowIterator,
                          load_backend, load_workbook, ResultContext, Columns, Rows,
                          Range, Table, FillData, HeaderTableTransform,
                          RemoveEmptyLines, Empty, FlexibleRange, Transpose,
-                         Workbook, BORDERS_VERTICAL, DEFAULT_TRANFORMS,
+                         Workbook, BORDERS_VERTICAL, DEFAULT_TRANSFORMS,
                          ListContext, RepeatExisting, MergeHeader, GetValue,
                          ToMap, TableNotEmpty, no_horizontal, ToDate, get_value,
                          Match, empty_line, DebugContext, StripLine
@@ -49,6 +49,7 @@ class DummyCell(object):
         self.value = value
         self.is_merged = False
 
+    @property
     def is_empty(self):
         return self.value == 0
 
@@ -229,7 +230,7 @@ class TestOpenpyxl(unittest.TestCase):
                             Sheet('sheet', Rows,
                                   Line, Empty, 
                                   Table(stop=no_horizontal, 
-                                        table_args=DEFAULT_TRANFORMS+[RemoveEmptyLines, RemoveEmptyLines('columns')]))
+                                        table_args=DEFAULT_TRANSFORMS+[RemoveEmptyLines, RemoveEmptyLines('columns')]))
                             })
         context = ListContext() #PythonObjectContext
         pattern.match_workbook(self.wbk, context)
@@ -242,7 +243,7 @@ class TestOpenpyxl(unittest.TestCase):
         pattern = Workbook({'Sheet4':
                                 Sheet('sheet', Rows,
                                       Empty, Table(table_args=[GetValue, HeaderTableTransform(2), FillData,
-                                                               RepeatExisting, MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b')]))
+                                                               RepeatExisting(0), MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b')]))
                             })
         context = ListContext() #PythonObjectContext
         pattern.match_workbook(self.wbk, context)
@@ -259,7 +260,7 @@ class TestOpenpyxl(unittest.TestCase):
                                   Table('ignore'),
                                   Many(Empty, 2),
                                   Table(table_args=[GetValue, HeaderTableTransform(3), FillData,
-                                                    RepeatExisting, MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b'),
+                                                    RepeatExisting(0), MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b'),
                                                     ToMap]))
                             })
         context = ListContext() #PythonObjectContext
@@ -320,11 +321,9 @@ class TestFlexibleRange(unittest.TestCase):
 
 
 class TestComplex(unittest.TestCase):
-    def test_complex(self):
-        load_backend('sheetparser.backends._openpyxl')
-        filename = os.path.join(os.path.dirname(__file__), 'test_table1.xlsx')
-        print(filename)
-        wbk = load_workbook(filename, with_formatting=True)
+    def _test_complex(self,backend,filename):
+        filename = os.path.join(os.path.dirname(__file__), filename)
+        wbk = load_workbook(filename, with_formatting=True, with_backend=backend)
         sheet = wbk['Sheet6']
         pattern = Sheet('sheet', Columns,
                         Many(Empty),
@@ -349,9 +348,30 @@ class TestComplex(unittest.TestCase):
         context = ListContext()
         pattern.match_range(sheet, context)
         dct= context.root
-        self.assertEquals(dct.keys(),{'__meta','t1','line2','line1','line3','t1','t2','t3'})
+        self.assertEquals(set(dct.keys()),{'__meta','t1','line2','line1','line3','t1','t2','t3'})
         self.assertEquals(dct['line3'],[['End']])
         self.assertEquals(dct['t1'][0].top_left[0][0],'A more complex example')
         self.assertEquals(dct['t2'][0].top_left,[['Yet another table']])
         self.assertEquals(dct['t3'][0].top_left,[['Another table']])
-        
+
+    def test_complex(self):
+        self._test_complex('sheetparser.backends._openpyxl','test_table1.xlsx')
+
+    def test_complex(self):
+        self._test_complex('sheetparser.backends._xlrd','test_table1.xls')
+       
+
+class TestPdf(unittest.TestCase):
+    def test_read_pdf(self):
+        filename = os.path.join(os.path.dirname(__file__), 'test_table1.pdf')
+        wbk = load_workbook(filename,with_backend='sheetparser.backends._pdfminer')
+        pattern = Workbook(
+            {2: Sheet('sheet', Rows,
+                      Table, Empty, Table, Empty,
+                      Line, Line)
+             })
+        context = PythonObjectContext()
+        pattern.match_workbook(wbk, context)
+        self.assertEqual(context[0].table.data[0][0], 'a11')
+        self.assertEqual(context[0].line_1[0], 'line2')
+

@@ -7,6 +7,7 @@ import logging
 
 import openpyxl
 import openpyxl.styles
+import openpyxl.comments
 
 from ..documents import (BORDER_TOP, BORDER_LEFT, 
                          BORDER_BOTTOM, BORDER_RIGHT, 
@@ -25,6 +26,9 @@ class opxlCell(object):
         self._wksheet_fmt = wksheet_fmt
         self._border_mask = None
         self.is_merged = is_merged
+
+    def get_cell(self):
+        return self._cell
 
     def __repr__(self):
         return "<opxlCell %s %s>" % (self._cell.row, self._cell.column)
@@ -54,34 +58,41 @@ class opxlCell(object):
     def color(self):
         return {k:float(v) for k,v in self._cell.fill.fgColor}
     
+    @property
     def is_empty(self):
         return self.value == EMPTY_CELL
 
     def set_value(self,value):
-        self._cell.value = value
+        self.get_cell().value = value
 
     def set_style(self,style):
-        self._cell.style = style
+        self.get_cell().style = style
+
+    def set_comment(self,text,author):
+        cell = self.get_cell()
+        comment = cell.comment
+        if not comment:
+            cell.comment = openpyxl.comments.Comment(text, author)
+        else:
+            comment.text = text
+            comment.author = author
 
 class EmptyCell(opxlCell):
-
-    value = EMPTY_CELL
 
     def __init__(self, column, row, sheet):
         self.column = column
         self.row = row
         super(EmptyCell,self).__init__(None, None, sheet, False)
 
+    def get_cell(self):
+        if self._cell is None:
+            self._cell = self.sheet.cell(column=self.column, row=self.row)
+        return self._cell
+
     def has_borders(self, mask):
         if self._cell is None:
             return False
         return super(EmptyCell).has_borders(mask)
-
-    def set_value(self,value):
-        print('SET EMPTY',self.row,self.column,value)
-        if self._cell is None:
-            self._cell = self.sheet.cell(column=self.column, row=self.row)
-        self._cell.value = value
 
 
 class opxlExcelSheet(CellRange, SheetDocument):

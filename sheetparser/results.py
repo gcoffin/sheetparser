@@ -146,7 +146,7 @@ class StripLine(object):
         self.right = right
 
     def __call__(self, line):
-        empties = [cell.is_empty() for cell in line]
+        empties = [cell.is_empty for cell in line]
         if all(empties):
             return []
         if self.right:
@@ -520,4 +520,4 @@ def _repeat_existing(line):
     return result
 
 
-DEFAULT_TRANFORMS = [GetValue, HeaderTableTransform, FillData, TableNotEmpty]
+DEFAULT_TRANSFORMS = [GetValue, HeaderTableTransform, FillData, TableNotEmpty]

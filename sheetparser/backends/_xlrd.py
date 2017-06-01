@@ -31,6 +31,7 @@ class xlrdCell(object):
             self._xf_cell = XfCell(self._cell.xf_index, self._wksheet)
         return self._xf_cell
 
+    @property
     def is_empty(self):
         return (self._ctype == xlrd.XL_CELL_EMPTY or
                 self._ctype == xlrd.XL_CELL_BLANK or

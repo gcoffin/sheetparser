@@ -71,14 +71,15 @@ iterator are:
 
 .. autoclass:: FlexibleRange(name='flexible', layout, *patterns, stop=None, min=None, max=None)
 
-.. autoclass:: Table(name='table', table_args=DEFAULT_TRANFORMS, stop=None)
+.. autoclass:: Table(name='table', table_args=DEFAULT_TRANSFORMS, stop=None)
 
 .. autoclass:: Line(name='line', line_args=None)
 
 Stop tests
 ----------
 
-Stop tests are functions that are passed to FlexibleRange and Table to detect the end of a block.
+Stop tests are functions that are passed to FlexibleRange and Table to detect the end of a block. You can create your own
+and pass it as a parameter to the pattern.
 
 .. autofunction:: empty_line(cells, line_count)
 

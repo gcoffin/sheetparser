@@ -39,7 +39,7 @@ __all__ = ['DoesntMatchException', 'QuickPrint', 'Sequence', 'Many', 'Maybe', 'W
            'TableTransform', 'TableNotEmpty', 'FillData',
            'get_value', 'Match', 'StripLine','GetValue',
            'HeaderTableTransform', 'RepeatExisting', 'RemoveEmptyLines', 'ToMap',
-           'MergeHeader', 'Transpose', 'ToDate', 'Table', 'DEFAULT_TRANFORMS',
+           'MergeHeader', 'Transpose', 'ToDate', 'Table', 'DEFAULT_TRANSFORMS',
            'CellRange', 
            'FlexibleRange', 'Line', 'Empty', 'Rows',
            'Columns', 'Document', 'BORDER_TOP', 'BORDER_LEFT', 'BORDER_BOTTOM',

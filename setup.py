@@ -1,8 +1,8 @@
 from setuptools import setup, find_packages
 
 setup(name='sheetparser',
-      version='0.1.1',
-      description='Turns an Excel (or other..) workbook made of sheets containing several tables into a usable source of data',
+      version='0.2',
+      description='Turns an Excel (or pdf, csv...) workbook made of sheets containing several tables into a usable source of data',
       url='http://github.com/gcoffin/sheetparser',
       author='Guillaume Coffin',
       author_email='guill.coffin@gmail.com',
@@ -13,13 +13,13 @@ setup(name='sheetparser',
         'sheetparser/tests': ['sheetparser/tests/test_table1.xlsx']
         },
       install_requires = ['six'],
-      download_url = 'https://github.com/gcoffin/sheetparser/archive/0.1.tar.gz',
+      download_url = 'https://github.com/gcoffin/sheetparser/archive/0.2.tar.gz',
       classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -35,7 +35,6 @@ setup(name='sheetparser',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX',
-
         ],
       keywords='excel tables parsing'
 )

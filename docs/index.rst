@@ -6,7 +6,7 @@
 sheetparser: the Excel scraper
 ==============================
 
-sheetparser is a library for extracting information from Excel sheets
+sheetparser is a library for extracting information from Excel sheets (as well as csv and pdf)
 that contain complex or variable layouts of tables.
 
 Obtaining data from various sources can be very painful, and loading

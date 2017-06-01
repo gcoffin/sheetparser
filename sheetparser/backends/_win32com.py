@@ -52,6 +52,7 @@ class win32Cell(object):
         if value is None: return EMPTY_CELL
         return value
     
+    @property
     def is_empty(self):
         return self._cell.Value is None or self._cell.Value == ''
 

@@ -8,19 +8,20 @@ from abc import abstractmethod
 
 import six
 
-from .utils import (DoesntMatchException, ConfigurationError, EMPTY_CELL,
+from .utils import (DoesntMatchException, ConfigurationError,
                     instantiate_if_class, instantiate_if_class_lst)
 from .results import DEFAULT_TRANSFORMS
 from .documents import (CellRange, WorkbookDocument, SheetDocument,
                         RbRowIterator, RbColIterator, BORDERS_VERTICAL,
                         BORDERS_HORIZONTAL)
 
+from . import documents
 
 def log_match_iterator(method):
     def __method(pattern, line_iterator, context):
         context.debug(pattern,
-                      (not line_iterator.empty) and [i.value for i in line_iterator.peek],
-                      line_iterator.idx)
+                      '<no line>' if line_iterator.is_complete else [i.value for i in line_iterator.peek],
+                      'Idx:',line_iterator.idx)
         return method(pattern, line_iterator, context)
     return __method
 
@@ -155,6 +156,9 @@ class Many(NamedPattern, LineIteratorPattern):
     limited by the parameters max and min. Name defaults to 'many'"""
     @default(str_or_none, name='many')
     def __init__(self, name, pattern, min=0, max=None):
+        if not ((min is None or isinstance(min,six.integer_types)) and
+            (max is None or isinstance(max,six.integer_types) )):
+            raise ConfigurationError('In Many, min and max need to be numbers')
         self.min = min
         self.max = max
         self.pattern = instantiate_if_class(pattern, Pattern)
@@ -180,7 +184,7 @@ class Many(NamedPattern, LineIteratorPattern):
                             count += 1
                             if count == self.max:
                                 return
-                    except DoesntMatchException:
+                    except DoesntMatchException as e:
                         if (self.min > count) or (self.max and self.max < count):
                             # context catches that
                             raise DoesntMatchException(
@@ -221,19 +225,18 @@ class Workbook(Pattern):
             raise ConfigurationError("Expected Workbook, got %s" % doc)
 
     def _match_range_s(self, sheet, pattern_s, context):
-        context.debug('sheet', sheet)
+        context.debug('sheet', sheet.name)
         if isinstance(pattern_s, Pattern):
             pattern_s = [pattern_s]
         for pattern in pattern_s:
             pattern.match_range(sheet, context)
 
     def match_workbook(self, workbook, context):
-        """The method `match_workbook` iterates through the sheets in
-        the workbook. If `names_dct` contains the sheet name, it will
-        try and match the associated pattern. If not, the method will
-        try in `re_dct` if any of the regular expressions matches the
-        names. Finally, if any other pattern is provided, they will be
-        tried in sequence.
+        """Iterates through the sheets in the workbook. If `names_dct`
+        contains the sheet name, it will try and match the associated
+        pattern. If not, the method will try in `re_dct` if any of the
+        regular expressions matches the names. Finally, if any other
+        pattern is provided, they will be tried in sequence.
 
         The context will contain the matching sheet in the same order
         as in the workbook,"""
@@ -334,7 +337,7 @@ class Sheet(WithLayoutPattern):
         context.emit('__meta', {'name': sheet.name})
 
 
-def empty_line(cells):
+def empty_line(cells, line_count=0):
     """returns true if all cells are empty"""
     return all(cell.is_empty for cell in cells)
 
@@ -377,7 +380,7 @@ class Table(NamedPattern, LineIteratorPattern):
             table.set_args(self.table_args)
             for line_count, g in enumerate(line_iterator):
                 table.append_table(g)
-                if line_iterator.empty or self.stop(line_iterator.peek, line_count):
+                if line_iterator.is_complete or self.stop(line_iterator.peek, line_count):
                     break
             table.wrap()
 
@@ -409,7 +412,7 @@ class FlexibleRange(WithLayoutPattern):
 
     @log_match_iterator
     def match_line_iterator(self, line_iterator, context):
-        if line_iterator.empty or empty_line(line_iterator.peek):
+        if line_iterator.is_complete or empty_line(line_iterator.peek):
             raise DoesntMatchException()
         s = line_iterator.peek
         top, left, bottom, right = s.top, s.left, s.bottom, s.right
@@ -419,7 +422,7 @@ class FlexibleRange(WithLayoutPattern):
             left = min(left, g.left)
             bottom = max(bottom, g.bottom)
             right = max(right, g.right)
-            if line_iterator.empty or self.stop(line_iterator.peek, linecount):
+            if line_iterator.is_complete or self.stop(line_iterator.peek, linecount):
                 break
         if self.min > linecount:
             raise DoesntMatchException(
@@ -448,7 +451,7 @@ class Line(NamedPattern, LineIteratorPattern):
 
     @log_match_iterator
     def match_line_iterator(self, line_iterator, context):
-        if line_iterator.empty:
+        if line_iterator.is_complete:
             raise DoesntMatchException("Line %s does not match (end of line_iterator)" % self.name)
         with context.push_named(self.name,'line'):
             line = context.current
@@ -456,6 +459,7 @@ class Line(NamedPattern, LineIteratorPattern):
             line.set_value(line_iterator.peek)
         six.next(line_iterator)
 
+import random
 
 class Empty(LineIteratorPattern):
     """Matches an empty line. Doesn't match if there is no more lines
@@ -464,7 +468,7 @@ class Empty(LineIteratorPattern):
 
     @log_match_iterator
     def match_line_iterator(self, line_iterator, context):
-        if line_iterator.empty:
+        if line_iterator.is_complete:
             raise DoesntMatchException('%s expects a line' %
                                        (self, ))
         if not empty_line(line_iterator.peek):

@@ -52,11 +52,12 @@ class opxlCell(object):
 
     @property
     def is_filled(self):
-        return self._cell.fill.patternType == 'solid'
+        fill = self._cell.fill
+        return getattr(fill,'patternType',None) is not None
 
     @property
-    def color(self):
-        return {k:float(v) for k,v in self._cell.fill.fgColor}
+    def fill(self):
+        return self._cell.fill
     
     @property
     def is_empty(self):
@@ -104,8 +105,8 @@ class opxlExcelSheet(CellRange, SheetDocument):
         if self.wksheet_fmt:
             for crange in self.wksheet_fmt.merged_cell_ranges:
                 clo, rlo, chi, rhi = openpyxl.utils.range_boundaries(crange)
-                for rowx in range(rlo, rhi):
-                    for colx in range(clo, chi):
+                for rowx in range(rlo, rhi + 1):
+                    for colx in range(clo, chi + 1):
                         if (rlo, clo) != (rowx, colx):
                             self.merged[rowx, colx] = (rlo, clo)
         self.top, self.left = 1, 1  # wksheet.min_row, wksheet.min_column

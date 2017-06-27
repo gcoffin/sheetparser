@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 import datetime
 import abc
 import re
-
+import collections
 import six
 
 from .utils import DoesntMatchException, EMPTY_CELL, ConfigurationError, instantiate_if_class_lst
@@ -60,6 +60,10 @@ class AbstractVisitor(object):
             return getattr(self, self.dispatch[type_name])(o)
         elif hasattr(o, 'visit'):
             return o.visit(self)
+        elif isinstance(o,dict):
+            return {k:self(v) for k,v in o.items()}
+        elif isinstance(o,(list,tuple)):
+            return [self(i) for i in o]
         else:
             return o
 
@@ -76,11 +80,14 @@ class QuickPrint(AbstractVisitor):
     def visit_table(self, o):
         return str(o)
 
+    def visit_line(self, o):
+        return str(o)
+
     def visit_table_with_header(self, o):
-        return {'_header': table_str(o.top_headers),
-                '_column': table_str(o.left_headers),
-                '_top_left': table_str(o.top_left),
-                '_data': table_str(o.data)
+        return {'_header': o.top_headers,
+                '_column': o.left_headers,
+                '_top_left': o.top_left,
+                '_data': (len(o.data),max(len(i) for i in o.data) if o.data else 0)
                 }
 
 
@@ -94,7 +101,7 @@ class ResultObject(object):
         pass
 
 
-class ResultDict(ResultObject, dict):
+class ResultDict(ResultObject, collections.OrderedDict):
     def visit(self, visitor):
         return {k: visitor(v) for (k, v) in six.iteritems(self)}
 
@@ -137,7 +144,7 @@ def _rindex(lst, x):
     return len(lst) - 1 - lst[::-1].index(x)
 
 
-class StripLine(object):
+class StripCellLine(object):
     '''A transformer used by Lines to remove trailing and ending empty
     cells
     '''
@@ -145,8 +152,11 @@ class StripLine(object):
         self.left = left
         self.right = right
 
+    def get_mask(self,line):
+        return [cell.is_empty for cell in line]
+
     def __call__(self, line):
-        empties = [cell.is_empty for cell in line]
+        empties = self.get_mask(line)
         if all(empties):
             return []
         if self.right:
@@ -155,7 +165,11 @@ class StripLine(object):
             line = line[empties.index(0):]
         return line
 
+class StripLine(StripCellLine):
+    def get_mask(self,line):
+        return [value==EMPTY_CELL for value in line]
 
+# todo: empty line has a different signification - need to fix that
 def non_empty(line):
     '''A transformer that matches only non empty lines. Other will
     raise a DoesntMatchException'''
@@ -174,7 +188,9 @@ class Match(object):
         matches
     '''
     def __init__(self, regex, position=None, combine=None):
-        self.regex = re.compile(regex)
+        if isinstance(regex,six.string_types):
+            regex = re.compile(regex)
+        self.regex = regex
         self.combine = None or any
         if isinstance(position, six.integer_types):
             self.position = [position]
@@ -185,8 +201,9 @@ class Match(object):
 
     def __call__(self, line):
         sline = line
-        if sline and not isinstance(sline[0],six.string_types):
+        if sline and hasattr(sline[0],'value'):
             sline = [cell.value for cell in line]
+        sline = [str(i) for i in sline]
         if isinstance(self.position, slice):
             if not self.combine(self.regex.match(p) for p in sline[self.position]):
                 raise DoesntMatchException
@@ -200,6 +217,14 @@ def get_value(line):
     return [c.value if not c.is_merged else EMPTY_CELL for c in line]
 
 
+def match_if(fun):
+    def __match(line,fun=fun):
+        if not fun(line):
+            raise DoesntMatchException
+        return line
+    return __match
+    
+
 class ResultLine(ResultObject, list):
     def set_args(self, transforms=None):
         self._transforms = transforms or [StripLine(), non_empty, get_value]
@@ -211,7 +236,11 @@ class ResultLine(ResultObject, list):
         line = list(line)
         for t in self._transforms:
             line = t(line)
-        self[:] = line
+        try:
+            self[:] = line
+        except TypeError as e:
+            six.raise_from(TypeError('One of the transforms did not return a list, check line_args'),
+                           e)
 
 class ResultTable(ResultObject):
     '''An object to store the content of a matched Table.
@@ -318,11 +347,11 @@ class DebugContext(ListContext):
         print(' '*len(self.stack),*args)
 
     def pop(self):
-        print(' '*len(self.stack),'--')
+        self.debug(' '*len(self.stack),'--')
         super(DebugContext,self).pop()
 
     def commit(self,*args):
-        self.debug('++')
+        self.debug(' '*len(self.stack),'++')
         super(DebugContext,self).commit(*args)
 
 class TableTransform(object):
@@ -394,17 +423,40 @@ class HeaderTableTransform(TableTransform):
             return line
         return None
 
+    def wrap(self,table):
+        if len(getattr(table,'top_headers',[]))<self.top_header:
+            raise DoesntMatchException
+        if len(getattr(table,'left_headers',[]))<self.left_column:
+            raise DoesntMatchException
 
-class RepeatExisting(TableTransform):
+class KeepOnly(TableTransform):
+    def __init__(self,left_header=None,top_header=None):
+        self.left_header = left_header
+        self.top_header = top_header
+
+    def wrap(self, table):
+        if self.top_header:
+            table.top_headers = [table.top_headers[i] for i in self.top_header]
+        if self.left_header:
+            table.left_headers = [table.left_headers[i] for i in self.left_header]
+
+
+class FillHeaderBlanks(TableTransform):
     '''Replaces empty strings with previous data'''
-    def __init__(self,*rows):
-        self.rows = rows
+    def __init__(self,*indexes,**kwargs):
+        self.which = kwargs.get('which','top_headers')
+        if not self.which in ['top_headers', 'left_headers']:
+            raise ConfigurationError('"which" must be top_headers or left_headers')
+        self.indexes = indexes
 
     def wrap(self, table):
         result = []
-        for i,header in enumerate(table.top_headers):
-            result.append(_repeat_existing(header) if i in self.rows else header)
-        table.top_headers = result
+        indexes = self.indexes 
+        for i,header in enumerate(getattr(table,self.which)):
+            result.append(_repeat_existing(header) if i in indexes else header)
+        setattr(table,self.which, result)
+
+RepeatExisting = lambda *rows:FillHeaderBlanks(*rows, which='top_headers')
 
 def _find_non_empty_rows(list_of_lists):
     return [i for i, line in enumerate(list_of_lists)

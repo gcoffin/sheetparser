@@ -37,7 +37,7 @@ from .results import *
 __all__ = ['DoesntMatchException', 'QuickPrint', 'Sequence', 'Many', 'Maybe', 'Workbook', 'Range',
            'Sheet', 'no_vertical', 'no_horizontal', 'empty_line',
            'TableTransform', 'TableNotEmpty', 'FillData',
-           'get_value', 'Match', 'StripLine','GetValue',
+           'get_value', 'Match', 'StripLine', 'GetValue', 'match_if','KeepOnly',
            'HeaderTableTransform', 'RepeatExisting', 'RemoveEmptyLines', 'ToMap',
            'MergeHeader', 'Transpose', 'ToDate', 'Table', 'DEFAULT_TRANSFORMS',
            'CellRange', 

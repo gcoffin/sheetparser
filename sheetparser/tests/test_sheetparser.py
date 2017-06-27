@@ -11,7 +11,8 @@ from sheetparser import (Document, CellRange, RbColIterator, RbRowIterator,
                          Workbook, BORDERS_VERTICAL, DEFAULT_TRANSFORMS,
                          ListContext, RepeatExisting, MergeHeader, GetValue,
                          ToMap, TableNotEmpty, no_horizontal, ToDate, get_value,
-                         Match, empty_line, DebugContext, StripLine
+                         Match, empty_line, DebugContext, StripLine,
+                         Sequence
                          )
 from sheetparser.documents import SheetDocument
 
@@ -375,3 +376,15 @@ class TestPdf(unittest.TestCase):
         self.assertEqual(context[0].table.data[0][0], 'a11')
         self.assertEqual(context[0].line_1[0], 'line2')
 
+
+class TestBug(unittest.TestCase):
+    def test_many_many(self):
+        sheet = DummySheet('dummy',[['h']*2,['l','d'],['']*2])
+        pattern = Sheet('e',Rows,
+                        Many('tables', 
+                             Sequence(Table('table',table_args = [GetValue, HeaderTableTransform(1,1),FillData],
+                                            stop = empty_line),
+                                      Many('between tables2', Empty))))
+        context = PythonObjectContext()
+        pattern.match_range(sheet, context)
+        self.assertEquals(len(context.tables),1)

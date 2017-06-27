@@ -142,3 +142,20 @@ Here's how it works (the numers refer to the line number in the code above):
 
 .. figure:: images/table2_explained.png
 
+PDF Files
+---------
+
+Version 0.2 includes a PDF backend. The document is seen as a Book and the Sheet are the pages of the document. Use the page number instead of the sheet name.
+
+.. code-block:: python
+    :linenos:
+        wbk = load_workbook('sheetparser/tests/test_table1.pdf',with_backend='sheetparser.backends._pdfminer')
+        pattern = Workbook(
+            {2: Sheet('sheet', Rows,  # page 2 should match the following:
+                      Table, Empty, Table, Empty,
+                      Line, Line)
+             })
+        context = PythonObjectContext()
+        pattern.match_workbook(wbk, context)
+        self.assertEqual(context[0].table.data[0][0], 'a11')
+        self.assertEqual(context[0].line_1[0], 'line2')

@@ -13,7 +13,7 @@ setup(name='sheetparser',
         'sheetparser/tests': ['sheetparser/tests/test_table1.xlsx']
         },
       install_requires = ['six'],
-      download_url = 'https://github.com/gcoffin/sheetparser/archive/0.2.tar.gz',
+      download_url = 'https://github.com/gcoffin/sheetparser/archive/0.3.tar.gz',
       classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha

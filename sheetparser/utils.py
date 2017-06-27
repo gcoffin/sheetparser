@@ -2,6 +2,23 @@ import six
 
 EMPTY_CELL = ''
 
+
+import warnings
+import functools
+
+def deprecated(comments=''):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emmitted
+    when the function is used."""
+
+    def __deprecate(func):
+        @functools.wraps(func)
+        def new_func(*args, **kwargs):
+            warnings.warn("The function {} is deprecated and will be removed by a future version.{}".format(func.__name__), category=DeprecationWarning, stacklevel=2)
+            return func(*args, **kwargs)
+
+    return __deprecate
+
 class ConfigurationError(Exception):
     pass
 

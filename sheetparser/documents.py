@@ -17,7 +17,7 @@ import importlib
 
 import six
 
-from .utils import ConfigurationError
+from .utils import ConfigurationError, deprecated
 
 # Documents
 
@@ -55,7 +55,7 @@ class RollbackIterator(six.Iterator):
         return self
 
     def __next__(self):
-        if self.empty:
+        if self.is_complete:
             raise StopIteration()
         result = self.peek
         self.idx += 1
@@ -66,11 +66,16 @@ class RollbackIterator(six.Iterator):
             self.__class__.__name__,
             self.rge, self.idx)
 
+    @property
+    @deprecated(' Use is_complete instead')
+    def empty(self):
+        return self.is_complete
+
 
 class RbRowIterator(RollbackIterator):
     """Iterates on the rows of a range"""
     @property
-    def empty(self):
+    def is_complete(self):
         return self.idx >= self.rge.bottom
 
     @property
@@ -81,7 +86,7 @@ class RbRowIterator(RollbackIterator):
 class RbColIterator(RollbackIterator):
     """Iterates on the columns of a range"""
     @property
-    def empty(self):
+    def is_complete(self):
         return self.idx >= self.rge.right
 
     @property

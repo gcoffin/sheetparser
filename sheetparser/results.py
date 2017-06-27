@@ -116,6 +116,8 @@ class ResultDict(ResultObject, collections.OrderedDict):
         self[n] = value
 
     def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(name)
         return self[name]
 
     def __repr__(self):

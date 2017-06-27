@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='sheetparser',
-      version='0.2',
+      version='0.3',
       description='Turns an Excel (or pdf, csv...) workbook made of sheets containing several tables into a usable source of data',
       url='http://github.com/gcoffin/sheetparser',
       author='Guillaume Coffin',

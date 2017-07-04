@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 import datetime
 import abc
 import re
-import collections
 import six
+from six.moves import zip_longest
 
 from .utils import DoesntMatchException, EMPTY_CELL, ConfigurationError, instantiate_if_class_lst
 
@@ -84,9 +84,9 @@ class QuickPrint(AbstractVisitor):
         return str(o)
 
     def visit_table_with_header(self, o):
-        return {'_header': o.top_headers,
-                '_column': o.left_headers,
-                '_top_left': o.top_left,
+        return {'_header': getattr(o,'top_headers',''),
+                '_column': getattr(o,'left_headers',''),
+                '_top_left': getattr(o,'top_left',''),
                 '_data': (len(o.data),max(len(i) for i in o.data) if o.data else 0)
                 }
 
@@ -101,7 +101,7 @@ class ResultObject(object):
         pass
 
 
-class ResultDict(ResultObject, collections.OrderedDict):
+class ResultDict(ResultObject, dict):
     def visit(self, visitor):
         return {k: visitor(v) for (k, v) in six.iteritems(self)}
 
@@ -229,7 +229,7 @@ def match_if(fun):
 
 class ResultLine(ResultObject, list):
     def set_args(self, transforms=None):
-        self._transforms = transforms or [StripLine(), non_empty, get_value]
+        self._transforms = transforms or [StripCellLine(), non_empty, get_value]
 
     def visit(self, visitor):
         visitor.visit_line(self)
@@ -327,6 +327,8 @@ class ListContext(PythonObjectContext):
         def append(self,arg):
             name, value = arg
             self.setdefault(name,[]).append(value)
+        def __getattr__(self, key):
+            return self[key]
 
     types = { 'list': DefaultResult,
               'dict': DefaultResult,
@@ -380,8 +382,14 @@ class GetValue(TableTransform):
     """Transforms a list of cells into a list of strings. All built in
     processors expect GetValue to be included as the first
     transformation."""
+    def __init__(self,include_merged=True):
+        self.include_merged = include_merged
+
     def process_line(self,table,line):
-        return [x.value for x in line]
+        if self.include_merged:
+            return [x.value for x in line]
+        else:
+            return [x.value for x in line if not x.is_merged]
 
 
 class FillData(TableTransform):
@@ -406,7 +414,7 @@ class HeaderTableTransform(TableTransform):
         table.top_headers = []
 
     def _append_to_cols(self,columns,line):
-        for h, c in zip(columns, line):
+        for h, c in zip_longest(columns, line):
             h.append(c)
 
     def process_line(self, table, line):
@@ -492,15 +500,17 @@ class ToMap(TableTransform):
     values are the table data"""
     def wrap(self, table):
         result = {}
-        for lefts, row in zip(zip(*table.left_headers), table.data):
-            for tops, cell in zip(zip(*table.top_headers), row):
+        for lefts, row in zip_longest(
+            zip_longest(*table.left_headers), table.data):
+            for tops, cell in zip_longest(
+                zip_longest(*table.top_headers), row):
                 key = tuple(lefts)+tuple(tops)
                 result[key] = cell
         table.data = result
         
 
 def _join_header(lines, char):
-    return [char.join("%s" % s for s in u) for u in zip(*lines)]
+    return [char.join("%s" % s for s in u) for u in zip_longest(*lines)]
 
 
 class MergeHeader(TableTransform):
@@ -528,7 +538,7 @@ class MergeHeader(TableTransform):
 
 
 def transpose(list_of_lists):
-    return list(list(r) for r in zip(*list_of_lists))
+    return list(list(r) for r in zip_longest(*list_of_lists))
 
 
 class Transpose(TableTransform):

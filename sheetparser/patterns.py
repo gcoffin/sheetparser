@@ -90,12 +90,64 @@ class LineIteratorPattern(Pattern):
         return OrPattern(self, p)
 
     def __add__(self, p):
-        return Sequence('', self, p)
+        return Sequence('add_', self, p)
 
     @abstractmethod
     def match_line_iterator(self, line_iterator, context):
         raise NotImplementedError
 
+@six.add_metaclass(abc.ABCMeta)
+class AbstractRangePattern(Pattern):
+    def __or__(self,p):
+        return RangeOr(self,p)
+
+    def __add__(self,p):
+        return RangeAnd(self,p)
+
+    @abstractmethod
+    def match_range(self, range, context):
+        raise NotImplementedError
+
+class RangeOr(NamedPattern,AbstractRangePattern):
+    @default(str_or_none, name='or')
+    def __init__(self, name, pattern1, pattern2):
+        self.pattern1 = instantiate_if_class(pattern1, AbstractRangePattern)
+        self.pattern2 = instantiate_if_class(pattern2, AbstractRangePattern)
+        super(RangeOr,self).__init__(name)
+
+    def __repr__(self):
+        return "<%s | %s>" % (self.pattern1, self.pattern2)
+
+    __str__ = __repr__
+
+    def match_range(self, range, context):
+        try:
+            with context.push_named(self.name, 'dict'):
+                self.pattern1.match_range(range, context)
+                return
+        except DoesntMatchException:
+            self.pattern2.match_range(range, context)
+
+class RangeAnd(NamedPattern, AbstractRangePattern):
+    @default(str_or_none, name='and_')
+    def __init__(self, name, *patterns):
+        self._patterns = list(patterns)
+        super(RangeAnd, self).__init__(name)
+
+    def get_patterns(self):
+        return instantiate_if_class_lst(self._patterns, AbstractRangePattern)
+
+    def emit_meta(self, doc, context):
+        pass
+
+    def match_range(self, range, context):
+        with context.push_named(self.name, 'dict'):
+            for pattern in self.get_patterns():
+                pattern.match_range(range, context)
+
+    def __add__(self, pattern):
+        self._patterns.append(pattern)
+        return self
 
 class OrPattern(LineIteratorPattern):
     """matches the first pattern and if it fails tries the seconds.
@@ -115,8 +167,10 @@ class OrPattern(LineIteratorPattern):
     @log_match_iterator
     def match_line_iterator(self, line_iterator, context):
         with line_iterator.rollback_if_fail(reraise=False):
-            self.pattern1.match_line_iterator(line_iterator, context)
-            return
+            # ignore what was pushed in the context in case of failure
+            with context.push_named('or', 'dict'):
+                self.pattern1.match_line_iterator(line_iterator, context)
+                return
         self.pattern2.match_line_iterator(line_iterator, context)
 
 
@@ -205,20 +259,23 @@ class Workbook(Pattern):
     """A top level pattern to match a workbook. Call match_workbook on
     an opened workbook document (as provided by a backend)
 
-    :param map names_dct: a dictionary that associates a
-        sheet name to the sheet pattern
-    :param map re_dct: a dictionary or a tuple of
-        pairs that associate a regular expression to the sheet pattern
+    :param map_or_list patterns: a list of patterns or a dictionary
+        that associates a sheet name or regular expession to the sheet
+        pattern
     """
     @default(str_or_none, name='workbook')
-    def __init__(self, name, names_dct=None, re_dct=None, *args, **options):
+    def __init__(self, name, patterns=None, **options):
         self.include_hidden = options.get('include_hidden', False)
-        self.names_dct = names_dct or {}
-        re_dct = re_dct or {}
-        if isinstance(re_dct, dict):
-            re_dct = six.iteritems(re_dct)
-        self.re_list = [(re.compile(r), pattern) for (r, pattern) in re_dct]
-        self.seq_patterns = args or None
+        self.seq_patterns = ()
+        self.names_dct = {}
+        re_iter = options.pop('regex',())
+        if isinstance(re_iter,dict):
+            re_iter = re_iter.items()
+        self.re_list = [(re.compile(r), pattern) for (r, pattern) in re_iter]
+        if isinstance(patterns,dict):
+            self.names_dct = patterns
+        else:
+            self.seq_patterns = patterns
 
     def assert_type(self, doc):
         if not isinstance(doc, WorkbookDocument):
@@ -269,7 +326,7 @@ class Workbook(Pattern):
 
 
 @six.add_metaclass(abc.ABCMeta)
-class RangePattern(NamedPattern):
+class RangePattern(NamedPattern,AbstractRangePattern):
     """Super class for all patterns that match a range"""
     def __init__(self, name, *patterns):
         self._patterns = list(patterns)
@@ -304,7 +361,6 @@ class WithLayoutPattern(RangePattern):
     def iter_range(self, rge):
         return self.layout.iter_doc(rge)
 
-
 class Range(WithLayoutPattern):
     """A range of cells delimited by top, left, bottom,
     right. RangePatterns are to be used directly under Workbook.
@@ -323,7 +379,8 @@ class Range(WithLayoutPattern):
 
     def emit_meta(self, sheet, context):
         context.emit('__meta', {
-                'range': (self.top, self.left, self.bottom, self.right)
+                'range': (self.top, self.left, self.bottom, self.right),
+                'name':sheet.name,
                 })
 
 
@@ -342,12 +399,12 @@ def empty_line(cells, line_count=0):
     return all(cell.is_empty for cell in cells)
 
 
-def no_vertical(cells, line_count):  # could do better than that
+def no_vertical(cells, line_count=0):  # could do better than that
     """check that there is no vertical line in the cells"""
     return all(not cell.has_borders(BORDERS_VERTICAL) for cell in cells)
 
 
-def no_horizontal(cells, line_count):
+def no_horizontal(cells, line_count=0):
     """return True is no cell has horizontal border""" 
     return all(not cell.has_borders(BORDERS_HORIZONTAL) for cell in cells)
 
@@ -412,8 +469,8 @@ class FlexibleRange(WithLayoutPattern):
 
     @log_match_iterator
     def match_line_iterator(self, line_iterator, context):
-        if line_iterator.is_complete or empty_line(line_iterator.peek):
-            raise DoesntMatchException()
+        if line_iterator.is_complete:
+            raise DoesntMatchException("FlexibleRange didn't match (no more lines %d)"%(line_iterator.idx))
         s = line_iterator.peek
         top, left, bottom, right = s.top, s.left, s.bottom, s.right
         linecount = 0

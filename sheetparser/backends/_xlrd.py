@@ -26,7 +26,7 @@ class xlrdCell(object):
         return self._cell.ctype
 
     @property
-    def xf_cell(self):
+    def formatting(self):
         if self._xf_cell is None:
             self._xf_cell = XfCell(self._cell.xf_index, self._wksheet)
         return self._xf_cell
@@ -39,22 +39,60 @@ class xlrdCell(object):
                  self.value.strip() == ''))
 
     def has_borders(self, mask):
-        return bool(self.xf_cell.borders & mask)
+        return bool(self.border_mask & mask)
 
+    @property
+    def border_mask(self):
+        return self.formatting.border_mask
+
+    @property
+    def fill(self):
+        return self.formatting.fill
+
+    
+    @property
+    def is_filled(self):
+        return self.formatting.is_filled
+
+
+
+class Fill(object):
+    PATTERN = {0:None,
+               1:'solid'}
+
+    def __init__(self,xf_record,book):
+        self.type = 'patternFill' # xlrd + formatting --> .xls, only supports patterns
+        self.pattern = self.PATTERN[xf_record.background.fill_pattern]
+        self.color1 = book.colour_map[xf_record.background.pattern_colour_index]
+        self.color2 = book.colour_map[xf_record.background.background_colour_index]
 
 class XfCell(object):
     def __init__(self, xf_index, wksheet):
         self._wksheet = wksheet
-        xf_record = wksheet.book.xf_list[xf_index]
-        border = xf_record.border
-        self._borders = ((BORDER_TOP*(border.top_line_style != 0)) |
-                         (BORDER_LEFT*(border.left_line_style != 0)) |
-                         (BORDER_BOTTOM*(border.bottom_line_style != 0)) |
-                         (BORDER_RIGHT*(border.right_line_style != 0)))
+        self._xf_record = wksheet.book.xf_list[xf_index]
+        self._borders = None
+        self._fill = None
 
     @property
-    def borders(self):
+    def border_mask(self):
+        if self._borders is None:
+            border = self._xf_record.border
+            self._borders = ((BORDER_TOP*(border.top_line_style != 0)) |
+                            (BORDER_LEFT*(border.left_line_style != 0)) |
+                            (BORDER_BOTTOM*(border.bottom_line_style != 0)) |
+                            (BORDER_RIGHT*(border.right_line_style != 0)))
         return self._borders
+
+    @property
+    def fill(self):
+        if self._fill is None:
+            self._fill = Fill(self._xf_record,self._wksheet.book)
+        return self._fill
+
+    @property
+    def is_filled(self):
+        return self.fill.type != 'patternFill' or self.fill.pattern is not None
+
 
 class xlrdExcelSheet(CellRange, SheetDocument):
     def __init__(self, wksheet):

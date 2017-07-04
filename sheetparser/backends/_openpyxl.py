@@ -1,9 +1,11 @@
 """uses openpyxl as the engine to read the Excel sheet."""
 
+# color index: -8 and use http://blog.softartisans.com/2013/05/13/kb-excels-color-palette-explained/
 from __future__ import print_function
 import os
 import six
 import logging
+import re
 
 import openpyxl
 import openpyxl.styles
@@ -19,20 +21,55 @@ from ..utils import EMPTY_CELL
 SHEETSTATE_VISIBLE = openpyxl.worksheet.Worksheet.SHEETSTATE_VISIBLE
 logger = logging.getLogger('sheetparser')
 
-class opxlCell(object):
-    def __init__(self, value, cell, wksheet_fmt, is_merged):
-        self._cell = cell
-        self.value = EMPTY_CELL if value is None else value
-        self._wksheet_fmt = wksheet_fmt
-        self._border_mask = None
-        self.is_merged = is_merged
+def color_tuple(hexastring):
+    if not re.match('[0-9A-F]{6}',hexastring):
+        return None
+    return tuple(int(x+y,16) for x,y in zip(hexastring[::2],hexastring[1::2]))[-3:] # can come with alpha channel
 
-    def get_cell(self):
-        return self._cell
+
+# solution to the theme in wksheet_fmt.parent.loaded_theme.decode('utf-8')
+
+class Fill(object):
+    def __init__(self,cell):
+        fill = cell.fill
+        book = cell.parent.parent
+        self.type = fill.tagname
+        self.color1 = None
+        self.color2 = None
+        if self.type == 'patternFill':
+            self.pattern = fill.patternType
+            if self.pattern is not None: 
+                self.color1 = self.get_color(fill.fgColor,book)
+                self.color2 = self.get_color(fill.bgColor,book)
+        else:
+            raise NotImplementedError()
+
+    def get_color(self,color,book):
+        if color.type == 'theme':
+            return {'theme':color.theme}
+        elif color.type == 'index':
+            index = color.index
+            if not isinstance(index,str):
+                try:
+                    index = book._colors[index]
+                except IndexError:
+                    return None
+            return color_tuple(index)
+        elif color.type == 'rgb':
+            return color_tuple(color.rgb)
+        else:
+            raise ValueError('Unknown color type')
 
     def __repr__(self):
-        return "<opxlCell %s %s>" % (self._cell.row, self._cell.column)
+        return "<Fill %s %s %s>"%(self.type,self.color1,self.color2)
         
+
+class Formatting(object):
+    def __init__(self,cell):
+        self._cell = cell
+        self._border_mask = None
+        self._fill = None
+
     @property
     def border_mask(self):
         if self._border_mask is None:
@@ -47,17 +84,50 @@ class opxlCell(object):
                     (BORDER_RIGHT*(border.right.style is not None)))
         return self._border_mask
 
+    @property
+    def fill(self):
+        if self._fill is None:
+            self._fill = Fill(self._cell)
+        return self._fill
+
+    @property
+    def is_filled(self):
+        return self.fill.type != 'patternFill' or self.fill.pattern is not None
+
+class opxlCell(object):
+    def __init__(self, value, cell, wksheet_fmt, is_merged):
+        self._cell = cell
+        self.value = EMPTY_CELL if value is None else value
+        self._wksheet_fmt = wksheet_fmt #used to write back
+        self._formatting = None
+        self.is_merged = is_merged
+
+    def get_cell(self):
+        return self._cell
+
+    @property
+    def formatting(self):
+        if self._formatting is None:
+            self._formatting = Formatting(self._cell)
+        return self._formatting
+
+    def __repr__(self):
+        return "<opxlCell %s %s>" % (self._cell.row, self._cell.column)
+        
+    @property
+    def border_mask(self):
+        return self.formatting.border_mask
+
     def has_borders(self, mask):
         return bool(self.border_mask & mask)
 
     @property
     def is_filled(self):
-        fill = self._cell.fill
-        return getattr(fill,'patternType',None) is not None
+        return self.formatting.is_filled
 
     @property
     def fill(self):
-        return self._cell.fill
+        return self.formatting.fill
     
     @property
     def is_empty(self):

@@ -12,7 +12,7 @@ from sheetparser import (Document, CellRange, RbColIterator, RbRowIterator,
                          ListContext, RepeatExisting, MergeHeader, GetValue,
                          ToMap, TableNotEmpty, no_horizontal, ToDate, get_value,
                          Match, empty_line, DebugContext, StripLine,
-                         Sequence
+                         Sequence, StripCellLine
                          )
 from sheetparser.documents import SheetDocument
 
@@ -212,6 +212,29 @@ class TestSimpleExcel(unittest.TestCase):
         self.assertEqual(context.many[0].t1.data[0][0], 'a11')
         self.assertEqual(context.many[2][0], 'line1')
 
+    def test_range(self):
+        sheet = self.wbk['Sheet1']
+        pattern = Range('range',Rows,Table('t1',table_args=[GetValue,FillData]),
+                        top=6,bottom=9,left=1,right=4)
+        context = PythonObjectContext()
+        pattern.match_range(sheet, context)
+        print(context.t1.data)
+        self.assertEqual(context.t1.data, [['table 2', 'a2', 'b2'], [1.0, 'a12', 'b12'], [2.0, 'a22', 'b22'], [3.0, 'a32', 'b32']] )
+        
+    
+    def test_ranges(self):
+        sheet = self.wbk['Sheet1']
+        pattern = (Range('range1',Rows,Table('t1',table_args=[GetValue,FillData]),
+                         top=6,bottom=9,left=1,right=4) +
+                   Range('range2',Rows,Table('t2',table_args=[GetValue,FillData]),
+                         top=6,bottom=9,left=1,right=4))
+
+        context = PythonObjectContext()
+        pattern.match_range(sheet, context)
+        print(context)
+        self.assertEqual(context.range1.t1.data, [['table 2', 'a2', 'b2'], [1.0, 'a12', 'b12'], [2.0, 'a22', 'b22'], [3.0, 'a32', 'b32']] )
+        self.assertEqual(context.range2.t2.data, [['table 2', 'a2', 'b2'], [1.0, 'a12', 'b12'], [2.0, 'a22', 'b22'], [3.0, 'a32', 'b32']] )
+
 
 class TestOpenpyxl(unittest.TestCase):
     def setUp(self):
@@ -220,6 +243,13 @@ class TestOpenpyxl(unittest.TestCase):
             os.path.join(os.path.dirname(__file__),
                          'test_table1.xlsx'),
             with_formatting=True)
+
+    def test_empties(self):
+        sheet = self.wbk['Sheet1']
+        row = six.next(CellRange(sheet,1,0,2,10).rows())
+        row = StripCellLine()(row)
+        row = get_value(row)
+        self.assertListEqual(row,['table 1','a','b','c'])
 
     def test_read(self):
         sheet = self.wbk['Sheet3']
@@ -337,8 +367,8 @@ class TestComplex(unittest.TestCase):
                                                     Many(Empty),Table('t2'),
                                                     stop=no_horizontal),
                                       Many(Empty),
-                                      Many((Line('line2',[get_value,Match('Result:')]) 
-                                            + Line('line3',[StripLine(),get_value]))
+                                      Many((Line('line2',[StripCellLine(),get_value,Match('Result:',0)]) 
+                                            + Line('line3',[StripCellLine(),get_value]))
                                            | Line('line1')),
                                       stop = lambda line,linecount: linecount>2 and empty_line(line)
                                       ),
@@ -350,15 +380,15 @@ class TestComplex(unittest.TestCase):
         pattern.match_range(sheet, context)
         dct= context.root
         self.assertEquals(set(dct.keys()),{'__meta','t1','line2','line1','line3','t1','t2','t3'})
-        self.assertEquals(dct['line3'],[['End']])
+        self.assertListEqual(dct['line3'],[['End']])
         self.assertEquals(dct['t1'][0].top_left[0][0],'A more complex example')
-        self.assertEquals(dct['t2'][0].top_left,[['Yet another table']])
-        self.assertEquals(dct['t3'][0].top_left,[['Another table']])
+        self.assertListEqual(dct['t2'][0].top_left,[['Yet another table']])
+        self.assertListEqual(dct['t3'][0].top_left,[['Another table']])
 
-    def test_complex(self):
+    def test_complex_openpy(self):
         self._test_complex('sheetparser.backends._openpyxl','test_table1.xlsx')
 
-    def test_complex(self):
+    def test_complex_xlrd(self):
         self._test_complex('sheetparser.backends._xlrd','test_table1.xls')
        
 

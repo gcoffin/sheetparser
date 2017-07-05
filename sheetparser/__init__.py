@@ -41,7 +41,7 @@ __all__ = ['DoesntMatchException', 'QuickPrint', 'Sequence', 'Many', 'Maybe', 'W
            'HeaderTableTransform', 'RepeatExisting', 'RemoveEmptyLines', 'ToMap',
            'MergeHeader', 'Transpose', 'ToDate', 'Table', 'DEFAULT_TRANSFORMS',
            'CellRange', 
-           'FlexibleRange', 'Line', 'Empty', 'Rows',
+           'FlexibleRange', 'Line', 'Empty', 'Rows','VisibleRows',
            'Columns', 'Document', 'BORDER_TOP', 'BORDER_LEFT', 'BORDER_BOTTOM',
            'BORDER_RIGHT', 'BORDERS_VERTICAL', 'BORDERS_HORIZONTAL', 'EMPTY_CELL',
            'numrow', 'RbColIterator', 'RbRowIterator',

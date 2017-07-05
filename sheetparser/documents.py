@@ -56,7 +56,7 @@ class RollbackIterator(six.Iterator):
 
     def __next__(self):
         if self.is_complete:
-            raise StopIteration()
+            raise StopIteration
         result = self.peek
         self.idx += 1
         return result
@@ -82,6 +82,15 @@ class RbRowIterator(RollbackIterator):
     def peek(self):
         return CellRow(self.rge, self.idx)
 
+class RbVisibleRowIterator(RbRowIterator):
+    def __next__(self):
+        while True:
+            if self.is_complete:
+                raise StopIteration
+            result = self.peek
+            self.idx += 1
+            if not result.is_hidden():
+                return result
 
 class RbColIterator(RollbackIterator):
     """Iterates on the columns of a range"""
@@ -124,6 +133,13 @@ class CellRange(Document):
     def rows(self):
         for row in range(0,self.height):
             yield CellRow(self,row)
+
+    def is_hidden_row(self,row):
+        return self.rge.is_hidden_row(row + self.top)
+
+    @property
+    def name(self):
+        return self.rge.name
 
     def __str__(self):
         return 'CellRange:<%s>' % (str(list(str(row) for row in self.rows())))
@@ -184,6 +200,9 @@ class CellRow(CellRange):
     def bottom(self):
         return self._row+1
 
+    def is_hidden(self):
+        return self.rge.is_hidden_row(self._row)
+
     def __getitem__(self, i):
         if isinstance(i,slice):
             return [self[j] for j in list(range(0,len(self)))[i]]
@@ -209,6 +228,16 @@ BORDERS_HORIZONTAL = BORDER_TOP | BORDER_BOTTOM
 class SheetDocument(Document):
     """Base class for sheets, to be implemented
     by a backend"""
+
+    @property
+    def name(self):
+        return self._name
+    
+    @name.setter
+    def name(self,value):
+        self._name = value    
+
+
     @abstractmethod
     def cell(self, row, col):
         raise NotImplementedError

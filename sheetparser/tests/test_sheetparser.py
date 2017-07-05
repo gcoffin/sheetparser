@@ -209,7 +209,7 @@ class TestSimpleExcel(unittest.TestCase):
                         )
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
-        self.assertEqual(context.many[0].t1.data[0][0], 'a11')
+        self.assertEqual(context.many[0].add_.t1.data[0][0], 'a11')
         self.assertEqual(context.many[2][0], 'line1')
 
     def test_range(self):
@@ -218,7 +218,6 @@ class TestSimpleExcel(unittest.TestCase):
                         top=6,bottom=9,left=1,right=4)
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
-        print(context.t1.data)
         self.assertEqual(context.t1.data, [['table 2', 'a2', 'b2'], [1.0, 'a12', 'b12'], [2.0, 'a22', 'b22'], [3.0, 'a32', 'b32']] )
         
     
@@ -231,80 +230,9 @@ class TestSimpleExcel(unittest.TestCase):
 
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
-        print(context)
         self.assertEqual(context.range1.t1.data, [['table 2', 'a2', 'b2'], [1.0, 'a12', 'b12'], [2.0, 'a22', 'b22'], [3.0, 'a32', 'b32']] )
         self.assertEqual(context.range2.t2.data, [['table 2', 'a2', 'b2'], [1.0, 'a12', 'b12'], [2.0, 'a22', 'b22'], [3.0, 'a32', 'b32']] )
 
-
-class TestOpenpyxl(unittest.TestCase):
-    def setUp(self):
-        load_backend('sheetparser.backends._openpyxl')
-        self.wbk = load_workbook(
-            os.path.join(os.path.dirname(__file__),
-                         'test_table1.xlsx'),
-            with_formatting=True)
-
-    def test_empties(self):
-        sheet = self.wbk['Sheet1']
-        row = six.next(CellRange(sheet,1,0,2,10).rows())
-        row = StripCellLine()(row)
-        row = get_value(row)
-        self.assertListEqual(row,['table 1','a','b','c'])
-
-    def test_read(self):
-        sheet = self.wbk['Sheet3']
-        self.assertEqual( sheet.cell(0, 0).has_borders(BORDERS_VERTICAL), False)
-        self.assertEqual( sheet.cell(2, 0).has_borders(BORDERS_VERTICAL), True)
-
-    def test_read_formatted_table(self):
-        pattern = Workbook({'Sheet3':
-                            Sheet('sheet', Rows,
-                                  Line, Empty, 
-                                  Table(stop=no_horizontal, 
-                                        table_args=DEFAULT_TRANSFORMS+[RemoveEmptyLines, RemoveEmptyLines('columns')]))
-                            })
-        context = ListContext() #PythonObjectContext
-        pattern.match_workbook(self.wbk, context)
-        result = dict(context.root)
-        self.assertEqual(result['table'][0].top_left, [['This']])
-        self.assertEqual(result['table'][0].data, [[1, ''], ['', 1], [2, '']])
-
-
-    def test_merged(self):
-        pattern = Workbook({'Sheet4':
-                                Sheet('sheet', Rows,
-                                      Empty, Table(table_args=[GetValue, HeaderTableTransform(2), FillData,
-                                                               RepeatExisting(0), MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b')]))
-                            })
-        context = ListContext() #PythonObjectContext
-        pattern.match_workbook(self.wbk, context)
-        result = dict(context.root)
-        self.assertEqual(result['table'][0].top_left, [['Year', 'Date']])
-        self.assertEqual(result['table'][0].data, [[10, 12, 4], [5, 17, 4]])
-        self.assertEqual(result['table'][0].top_headers, [[datetime.datetime(2017, i, 1) for i in [1, 2, 3]]])
-
-
-    def test_merged2(self):
-        pattern = Workbook({'Sheet4':
-                            Sheet('sheet', Rows,
-                                  Empty,
-                                  Table('ignore'),
-                                  Many(Empty, 2),
-                                  Table(table_args=[GetValue, HeaderTableTransform(3), FillData,
-                                                    RepeatExisting(0), MergeHeader([0, 1], ch='/'), ToDate(0, '%Y/%b'),
-                                                    ToMap]))
-                            })
-        context = ListContext() #PythonObjectContext
-        pattern.match_workbook(self.wbk, context)
-        result = dict(context.root)
-        expected = {('John', 'Actual', datetime.datetime(2017, 1, 1)): 10,
-                    ('John', 'Actual', datetime.datetime(2017, 2, 1)): 12,
-                    ('John', 'Forecast', datetime.datetime(2017, 3, 1)): 4,
-                    ('Rachel', 'Actual', datetime.datetime(2017, 1, 1)): 5,
-                    ('Rachel', 'Actual', datetime.datetime(2017, 2, 1)): 17,
-                    ('Rachel', 'Forecast', datetime.datetime(2017, 3, 1)): 4}
-        self.assertEqual(result['table'][0].top_left, [['Table 2', 'Date', 'type']])
-        self.assertEqual(result['table'][0].data, expected)
 
 
 class TestWin32(unittest.TestCase):
@@ -390,22 +318,7 @@ class TestComplex(unittest.TestCase):
 
     def test_complex_xlrd(self):
         self._test_complex('sheetparser.backends._xlrd','test_table1.xls')
-       
-
-class TestPdf(unittest.TestCase):
-    def test_read_pdf(self):
-        filename = os.path.join(os.path.dirname(__file__), 'test_table1.pdf')
-        wbk = load_workbook(filename,with_backend='sheetparser.backends._pdfminer')
-        pattern = Workbook(
-            {2: Sheet('sheet', Rows,
-                      Table, Empty, Table, Empty,
-                      Line, Line)
-             })
-        context = PythonObjectContext()
-        pattern.match_workbook(wbk, context)
-        self.assertEqual(context[0].table.data[0][0], 'a11')
-        self.assertEqual(context[0].line_1[0], 'line2')
-
+        
 
 class TestBug(unittest.TestCase):
     def test_many_many(self):

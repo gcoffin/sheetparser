@@ -19,3 +19,8 @@ To install sheetparser:
 .. code-block:: bash
 
     $ pip install sheetparser
+
+or to obtain the last dev version
+
+.. code-block:: bash
+   $ pip install git+https://github.com/gcoffin/sheetparser.git

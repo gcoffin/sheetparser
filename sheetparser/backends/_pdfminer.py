@@ -216,6 +216,9 @@ class Page(object):
 
 
 class PdfTable(object):
+    """receives aligned frames and build a 2d table, based
+    on the calculation of tables and columns."""
+
     def __init__(self,aligned_frames):
         self.aligned_frames = aligned_frames
         self._calculate_columns() # build a list of columns
@@ -226,10 +229,22 @@ class PdfTable(object):
         for row in self.aligned_frames[1:]:
             self._add_row(row.frames)
 
+    def _add_row(self,row):
+        for cell in row:
+            # what are the columns that intersect this cell
+            ids = [i for i,col in enumerate(self.columns) if col & cell.position.x_int]
+            if len(ids)==0: # there's none: new columnn
+                bisect.insort(self.columns,cell.position.x_int)
+            else: # there's at least one: restrict existing
+                for i in ids:
+                    self.columns[i] &= cell.position.x_int
+
     def _calculate_rows(self):
+        # the the middle y of aligned frames
         centers = [aligned_frame.interval.middle for aligned_frame in self.aligned_frames if aligned_frame]
         if len(centers)<3:
             return centers
+        # median height between consecutive centers
         candidate = sorted(i-j for i,j in zip(centers[:-1],centers[1:]))[len(centers)//2]
         _aligned_frames = []
         prev = None
@@ -237,22 +252,13 @@ class PdfTable(object):
             if aligned_frame is None:
                 continue
             if prev is not None:
+                # merge this frame with previous if it's too close
                 while aligned_frame.interval.b < prev - 1.5 * candidate:
                     _aligned_frames.append(None)
                     prev = prev - candidate
             _aligned_frames.append(aligned_frame)
-            prev = aligned_frame.interval.middle        
+            prev = aligned_frame.interval.middle
         self.aligned_frames = _aligned_frames
-        
-    def _add_row(self,row):
-        for cell in row:
-            ids = [i for i,col in enumerate(self.columns) if col & cell.position.x_int]
-            if len(ids)==0: # new columnn
-                bisect.insort(self.columns,cell.position.x_int)
-            else:
-                for i in ids:
-                    self.columns[i] &= cell.position.x_int
-        # return len([1 for cell1,cell2 in zip(columns,columns[1:]) if cell1&cell2])==0
 
     def get_table(self):
         table = []
@@ -300,15 +306,12 @@ class TextAnalyzer(TextConverter):
         return result
     
     def end_page(self,page):
-        #assert self.text=='',Exception(self.text)
         return TextConverter.end_page(self,page)
 
     def receive_layout(self, ltpage):
         if self.showpageno:
             self.write_text('Page %s\n' % ltpage.pageid)
         self.render(ltpage)
-        #self.write_text('\f')
-        return
 
     def all_text(self):
         for pdfpage,page in sorted(six.iteritems(self.pages)):
@@ -344,7 +347,6 @@ def read_pdf(fp,password='',*page_numbers):
     # Process each page contained in the document.
     for page in PDFPage.create_pages(document):
         interpreter.process_page(page)
-    #read(f,device,page_numbers)
     device.close()
     return device.get_result()
 

@@ -47,7 +47,7 @@ class Fill(object):
     def get_color(self,color,book):
         if color.type == 'theme':
             return {'theme':color.theme}
-        elif color.type == 'index':
+        elif color.type == 'indexed':
             index = color.index
             if not isinstance(index,str):
                 try:
@@ -166,12 +166,13 @@ class EmptyCell(opxlCell):
         return super(EmptyCell).has_borders(mask)
 
 
-class opxlExcelSheet(CellRange, SheetDocument):
+class opxlExcelSheet(SheetDocument, CellRange):
     def __init__(self, wksheet_data, wksheet_fmt=None):
         self.name = wksheet_data.title
         self.wksheet_data = wksheet_data
         self.wksheet_fmt = wksheet_fmt
         self.merged = {}
+        self.hidden_rows = {}
         if self.wksheet_fmt:
             for crange in self.wksheet_fmt.merged_cell_ranges:
                 clo, rlo, chi, rhi = openpyxl.utils.range_boundaries(crange)
@@ -185,6 +186,9 @@ class opxlExcelSheet(CellRange, SheetDocument):
 
     def is_hidden(self):
         return self.wksheet_data.sheet_state != SHEETSTATE_VISIBLE
+
+    def is_hidden_row(self,rowidx):
+        return self.wksheet_fmt.row_dimensions[rowidx + 1].hidden
 
     def cell(self, row, col):
         abs_row = self.top + row

@@ -26,7 +26,7 @@ class rawCell(object):
     def is_merged(self):
         return False
 
-class rawSheet(CellRange, SheetDocument):
+class rawSheet(SheetDocument, CellRange):
     def __init__(self, name, values):
         self.name = name
         self.data = values

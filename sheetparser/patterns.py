@@ -12,7 +12,8 @@ from .utils import (DoesntMatchException, ConfigurationError,
                     instantiate_if_class, instantiate_if_class_lst)
 from .results import DEFAULT_TRANSFORMS
 from .documents import (CellRange, WorkbookDocument, SheetDocument,
-                        RbRowIterator, RbColIterator, BORDERS_VERTICAL,
+                        RbRowIterator, RbColIterator, RbVisibleRowIterator,
+                        BORDERS_VERTICAL,
                         BORDERS_HORIZONTAL)
 
 from . import documents
@@ -171,7 +172,8 @@ class OrPattern(LineIteratorPattern):
             with context.push_named('or', 'dict'):
                 self.pattern1.match_line_iterator(line_iterator, context)
                 return
-        self.pattern2.match_line_iterator(line_iterator, context)
+        with context.push_named('or', 'dict'):
+            self.pattern2.match_line_iterator(line_iterator, context)
 
 
 class Sequence(NamedPattern, LineIteratorPattern):
@@ -268,7 +270,7 @@ class Workbook(Pattern):
         self.include_hidden = options.get('include_hidden', False)
         self.seq_patterns = ()
         self.names_dct = {}
-        re_iter = options.pop('regex',())
+        re_iter = options.pop('regex',None) or options.pop('re_dct',()) # for backward compatibility
         if isinstance(re_iter,dict):
             re_iter = re_iter.items()
         self.re_list = [(re.compile(r), pattern) for (r, pattern) in re_iter]
@@ -555,3 +557,10 @@ class Columns(Layout):
     def iter_doc(self, doc):
         assert isinstance(doc, CellRange), "Expected CellRange, got %s" % doc
         return RbColIterator(doc)
+
+
+class VisibleRows(Layout):
+    def iter_doc(self,doc):
+        assert isinstance(doc, CellRange), "Expected CellRange, got %s" % doc
+        return RbVisibleRowIterator(doc)
+        

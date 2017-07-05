@@ -77,6 +77,13 @@ class QuickPrint(AbstractVisitor):
         'ResultTable': 'visit_table_with_header'
         }
 
+    def __init__(self,*show):
+        if not show:
+            show = None
+        elif show[0]==None:
+            show = ()
+        self.show = show
+
     def visit_table(self, o):
         return str(o)
 
@@ -84,12 +91,14 @@ class QuickPrint(AbstractVisitor):
         return str(o)
 
     def visit_table_with_header(self, o):
-        return {'_header': getattr(o,'top_headers',''),
+        data = {'_header': getattr(o,'top_headers',''),
                 '_column': getattr(o,'left_headers',''),
                 '_top_left': getattr(o,'top_left',''),
                 '_data': (len(o.data),max(len(i) for i in o.data) if o.data else 0)
                 }
-
+        if self.show is None:
+            return data
+        return {k:data[k] for k in self.show}
 
 # Classes for PythonObjectContext
 class ResultObject(object):

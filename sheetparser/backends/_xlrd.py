@@ -94,7 +94,7 @@ class XfCell(object):
         return self.fill.type != 'patternFill' or self.fill.pattern is not None
 
 
-class xlrdExcelSheet(CellRange, SheetDocument):
+class xlrdExcelSheet(SheetDocument, CellRange):
     def __init__(self, wksheet):
         self.name = wksheet.name
         self.wksheet = wksheet
@@ -111,6 +111,11 @@ class xlrdExcelSheet(CellRange, SheetDocument):
 
     def is_hidden(self):
         return self.wksheet.visibility != 0
+
+    def is_hidden_row(self,rowidx):
+        row_info = self.wksheet.rowinfo_map.get(rowidx)
+        if row_info is None: return False
+        return row_info.hidden
 
     def cell(self, row, col, ignore_merged=False):
         is_merged = False

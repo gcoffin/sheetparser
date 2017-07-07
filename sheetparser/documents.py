@@ -277,6 +277,7 @@ class WorkbookReader(dict):
     def __init__(self):
         _openpyxl = LazyModule('sheetparser.backends._openpyxl')
         _xlrd = LazyModule('sheetparser.backends._xlrd')
+        _pdfminer = LazyModule('sheetparser.backends._pdfminer')
         self['.xls',True] = _xlrd
         self['.xlsx',False] = _xlrd
         self['.xlsm',False] = _xlrd
@@ -284,6 +285,7 @@ class WorkbookReader(dict):
 
         self['.xlsx',True] = _openpyxl
         self['.xlsm',True] = _openpyxl
+        self['.pdf',False] = _pdfminer
         self['_openpyxl']=_openpyxl
 
     def __call__(self, filepath, with_formatting=False, with_backend=None):

@@ -156,24 +156,23 @@ class OrPattern(LineIteratorPattern):
     :param Pattern pattern1: first pattern to try
     :param Pattern pattern2: fall back patter
     """
-    def __init__(self, pattern1, pattern2):
-        self.pattern1 = instantiate_if_class(pattern1, LineIteratorPattern)
-        self.pattern2 = instantiate_if_class(pattern2, LineIteratorPattern)
+    def __init__(self, *args):
+        self.patterns = [instantiate_if_class(p, LineIteratorPattern) for p in args]
 
     def __repr__(self):
-        return "<%s | %s>" % (self.pattern1, self.pattern2)
+        return "<%s>" % (' | '.join(str(i) for i in self.patterns))
 
     __str__ = __repr__
 
     @log_match_iterator
     def match_line_iterator(self, line_iterator, context):
-        with line_iterator.rollback_if_fail(reraise=False):
-            # ignore what was pushed in the context in case of failure
-            with context.push_named('or', 'dict'):
-                self.pattern1.match_line_iterator(line_iterator, context)
-                return
-        with context.push_named('or', 'dict'):
-            self.pattern2.match_line_iterator(line_iterator, context)
+        for pattern in self.patterns:
+            with line_iterator.rollback_if_fail(reraise=False):
+                # ignore what was pushed in the context in case of failure
+                with context.push_named('or_', 'dict'):
+                    pattern.match_line_iterator(line_iterator, context)
+                    return
+        raise DoesntMatchException
 
 
 class Sequence(NamedPattern, LineIteratorPattern):
@@ -261,9 +260,13 @@ class Workbook(Pattern):
     """A top level pattern to match a workbook. Call match_workbook on
     an opened workbook document (as provided by a backend)
 
-    :param map_or_list patterns: a list of patterns or a dictionary
+    :param dict_or_list patterns: a list of patterns or a dictionary
         that associates a sheet name or regular expession to the sheet
         pattern
+
+    :param dict regex: dictionary that associates a regular expression
+        to a pattern. If a sheet matches the regex, then it will try
+        to match the pattern.
     """
     @default(str_or_none, name='workbook')
     def __init__(self, name, patterns=None, **options):

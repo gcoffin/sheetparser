@@ -7,6 +7,7 @@ import collections
 import bisect
 import functools
 import six
+import logging
 
 # pdfminer or pdfminer.six
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter

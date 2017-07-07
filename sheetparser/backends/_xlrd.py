@@ -1,6 +1,7 @@
 """Provides the interface to open an Excel workbooks, using xlrd as
 the engine. Can read xls with formatting, or xlsx without
 formatting."""
+import datetime
 
 import xlrd
 import six
@@ -19,6 +20,12 @@ class xlrdCell(object):
 
     @property
     def value(self):
+        if self._cell.ctype == 3: # it's a date!
+            datetuple = xlrd.xldate_as_tuple(self._cell.value, self._wksheet.book.datemode)
+            if any(datetuple[:3]):
+                return datetime.datetime(*datetuple)
+            else:
+                return datetime.time(*datetuple[3:])
         return self._cell.value
 
     @property
@@ -55,16 +62,22 @@ class xlrdCell(object):
         return self.formatting.is_filled
 
 
-
 class Fill(object):
     PATTERN = {0:None,
                1:'solid'}
 
     def __init__(self,xf_record,book):
         self.type = 'patternFill' # xlrd + formatting --> .xls, only supports patterns
-        self.pattern = self.PATTERN[xf_record.background.fill_pattern]
-        self.color1 = book.colour_map[xf_record.background.pattern_colour_index]
-        self.color2 = book.colour_map[xf_record.background.background_colour_index]
+        self.pattern = self.PATTERN.get(xf_record.background.fill_pattern)
+        if self.pattern is not None:
+            self.color1 = book.colour_map[xf_record.background.pattern_colour_index]
+            self.color2 = book.colour_map[xf_record.background.background_colour_index]
+        else:
+            self.color1 = None
+            self.color2 = None
+
+    def __repr__(self):
+        return "<Fill %s %s %s %s>"%(self.type,self.pattern,self.color1,self.color2)
 
 class XfCell(object):
     def __init__(self, xf_index, wksheet):

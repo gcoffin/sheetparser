@@ -61,7 +61,7 @@ class Fill(object):
             raise ValueError('Unknown color type')
 
     def __repr__(self):
-        return "<Fill %s %s %s>"%(self.type,self.color1,self.color2)
+        return "<Fill %s %s %s %s>"%(self.type,self.pattern,self.color1,self.color2)
         
 
 class Formatting(object):

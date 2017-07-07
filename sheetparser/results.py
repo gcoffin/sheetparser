@@ -85,10 +85,10 @@ class QuickPrint(AbstractVisitor):
         self.show = show
 
     def visit_table(self, o):
-        return str(o)
+        return six.text_type(o)
 
     def visit_line(self, o):
-        return str(o)
+        return six.text_type(o)
 
     def visit_table_with_header(self, o):
         data = {'_header': getattr(o,'top_headers',''),
@@ -127,7 +127,10 @@ class ResultDict(ResultObject, dict):
     def __getattr__(self, name):
         if name.startswith('_'):
             raise AttributeError(name)
-        return self[name]
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
 
     def __repr__(self):
         return "Dict %s (%s)" % (
@@ -147,7 +150,7 @@ class ResultList(ResultObject, list):
     def __repr__(self):
         return ("List %s (%s)" %
                 (self.name,
-                 ', '.join(str(i) for i in self)))
+                 ', '.join(six.text_type(i) for i in self)))
 
 
 def _rindex(lst, x):
@@ -214,12 +217,14 @@ class Match(object):
         sline = line
         if sline and hasattr(sline[0],'value'):
             sline = [cell.value for cell in line]
-        sline = [str(i) for i in sline]
+        sline = [six.text_type(i) for i in sline]
         if isinstance(self.position, slice):
             if not self.combine(self.regex.match(p) for p in sline[self.position]):
-                raise DoesntMatchException
+                raise DoesntMatchException("%s doesn't match %s" % 
+                                           (sline[self.position], self.regex.pattern))
         elif not self.combine(self.regex.match(sline[p]) for p in self.position):
-            raise DoesntMatchException
+            raise DoesntMatchException("%s doesn't match %s" % 
+                                       (sline, self.regex.pattern))
         return line
 
 
@@ -337,7 +342,10 @@ class ListContext(PythonObjectContext):
             name, value = arg
             self.setdefault(name,[]).append(value)
         def __getattr__(self, key):
-            return self[key]
+            try:
+                return self[key]
+            except KeyError:
+                raise AttributeError(key)
 
     types = { 'list': DefaultResult,
               'dict': DefaultResult,
@@ -400,6 +408,14 @@ class GetValue(TableTransform):
         else:
             return [x.value for x in line if not x.is_merged]
 
+class IgnoreIf(TableTransform):
+    def __init__(self,test):
+        self.test = test
+
+    def process_line(self,table,line):
+        if not self.test(line):
+            return line
+        return None
 
 class FillData(TableTransform):
     """Adds the line to the table data"""

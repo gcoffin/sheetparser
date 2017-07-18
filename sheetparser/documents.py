@@ -82,6 +82,7 @@ class RbRowIterator(RollbackIterator):
     def peek(self):
         return CellRow(self.rge, self.idx)
 
+
 class RbVisibleRowIterator(RbRowIterator):
     def __next__(self):
         while True:
@@ -91,6 +92,7 @@ class RbVisibleRowIterator(RbRowIterator):
             self.idx += 1
             if not result.is_hidden():
                 return result
+
 
 class RbColIterator(RollbackIterator):
     """Iterates on the columns of a range"""
@@ -131,10 +133,10 @@ class CellRange(Document):
             self.rge, (self.top, self.left, self.bottom, self.right))
 
     def rows(self):
-        for row in range(0,self.height):
-            yield CellRow(self,row)
+        for row in range(0, self.height):
+            yield CellRow(self, row)
 
-    def is_hidden_row(self,row):
+    def is_hidden_row(self, row):
         return self.rge.is_hidden_row(row + self.top)
 
     @property
@@ -144,6 +146,7 @@ class CellRange(Document):
     def __str__(self):
         return 'CellRange:<%s>' % (str(list(str(row) for row in self.rows())))
 
+
 def _abs_index(rge, i):
     if i < 0:
         i = len(rge) + i
@@ -152,6 +155,7 @@ def _abs_index(rge, i):
     elif i >= len(rge):
         raise IndexError
     return i
+
 
 class CellColumn(CellRange):
     """a vertical line of cells - a range of width 1"""
@@ -170,8 +174,8 @@ class CellColumn(CellRange):
         return self.col+1
 
     def __getitem__(self, i):
-        if isinstance(i,slice):
-            return [self[j] for j in list(range(0,len(self)))[i]]
+        if isinstance(i, slice):
+            return [self[j] for j in list(range(0, len(self)))[i]]
         return self.rge.cell(self.top +
                              _abs_index(self, i), self.col)
 
@@ -204,8 +208,8 @@ class CellRow(CellRange):
         return self.rge.is_hidden_row(self._row)
 
     def __getitem__(self, i):
-        if isinstance(i,slice):
-            return [self[j] for j in list(range(0,len(self)))[i]]
+        if isinstance(i, slice):
+            return [self[j] for j in list(range(0, len(self)))[i]]
         return self.rge.cell(self._row,
                              self.left + _abs_index(self, i))
 
@@ -232,11 +236,10 @@ class SheetDocument(Document):
     @property
     def name(self):
         return self._name
-    
-    @name.setter
-    def name(self,value):
-        self._name = value    
 
+    @name.setter
+    def name(self, value):
+        self._name = value
 
     @abstractmethod
     def cell(self, row, col):
@@ -256,53 +259,57 @@ def load_backend(name, ignore_fail=False):
     try:
         return importlib.import_module(name)
     except ImportError:
-        print("Coudn't import file %s" % name,file=sys.stderr)
+        print("Coudn't import file %s" % name, file=sys.stderr)
         if not ignore_fail:
             raise
         return None
 
+
 class LazyModule(object):
-    def __init__(self,name):
+    def __init__(self, name):
         self.name = name
         self.module = None
 
-    def __getattr__(self,attr):
+    def __getattr__(self, attr):
         if self.module is None:
             self.module = load_backend(self.name)
-        return getattr(self.module,attr)
-        
+        return getattr(self.module, attr)
+
+
 class WorkbookReader(dict):
     """a callable object that will call the proper
-    backend to read the file"""    
+    backend to read the file"""
     def __init__(self):
         _openpyxl = LazyModule('sheetparser.backends._openpyxl')
         _xlrd = LazyModule('sheetparser.backends._xlrd')
         _pdfminer = LazyModule('sheetparser.backends._pdfminer')
-        self['.xls',True] = _xlrd
-        self['.xlsx',False] = _xlrd
-        self['.xlsm',False] = _xlrd
-        self['_xlrd']=_xlrd
+        self['.xls', True] = _xlrd
+        self['.xlsx', False] = _xlrd
+        self['.xlsm', False] = _xlrd
+        self['_xlrd'] = _xlrd
 
-        self['.xlsx',True] = _openpyxl
-        self['.xlsm',True] = _openpyxl
-        self['.pdf',False] = _pdfminer
-        self['_openpyxl']=_openpyxl
+        self['.xlsx', True] = _openpyxl
+        self['.xlsm', True] = _openpyxl
+        self['.pdf', False] = _pdfminer
+        self['_openpyxl'] = _openpyxl
 
     def __call__(self, filepath, with_formatting=False, with_backend=None):
         backend = None
         if with_backend is None:
             __, ext = os.path.splitext(filepath)
-            backend = self.get((ext, with_formatting),None)
+            backend = self.get((ext, with_formatting), None)
         elif with_backend:
             if with_backend in self:
                 backend = self[with_backend]
             else:
                 backend = self[with_backend] = load_backend(with_backend)
         if not backend:
-            raise ConfigurationError("You need to import a backend that provides this functionality first")
+            raise ConfigurationError(
+                "You need to import a backend that"
+                " provides this functionality first")
         else:
-            return backend.load_workbook(filepath, with_formatting=with_formatting)
+            return backend.load_workbook(filepath,
+                                         with_formatting=with_formatting)
 
-    
 
 load_workbook = WorkbookReader()

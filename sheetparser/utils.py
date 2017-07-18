@@ -1,10 +1,9 @@
 import six
+import warnings
+import functools
 
 EMPTY_CELL = ''
 
-
-import warnings
-import functools
 
 def deprecated(comments=''):
     """This is a decorator which can be used to mark functions
@@ -14,10 +13,13 @@ def deprecated(comments=''):
     def __deprecate(func):
         @functools.wraps(func)
         def new_func(*args, **kwargs):
-            warnings.warn("The function {} is deprecated and will be removed by a future version.{}".format(func.__name__), category=DeprecationWarning, stacklevel=2)
+            warnings.warn("The function {} is deprecated and"
+                          " will be removed by a future version.{}".format(func.__name__),
+                          category=DeprecationWarning, stacklevel=2)
             return func(*args, **kwargs)
 
     return __deprecate
+
 
 class ConfigurationError(Exception):
     pass
@@ -43,10 +45,10 @@ def instantiate_if_class(cls_or_inst, cls, **kwargs):
         return cls_or_inst
     result = cls_or_inst(**kwargs)
     if not isinstance(result, cls):
-        raise ConfigurationError("Expected %s, got %s" % (cls.__name__, type(result)))
+        raise ConfigurationError("Expected %s, got %s" % (
+                cls.__name__, type(result)))
     return result
 
 
 def instantiate_if_class_lst(lst, cls, **kwargs):
     return [instantiate_if_class(c, cls, **kwargs) for c in lst]
-

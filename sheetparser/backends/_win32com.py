@@ -3,8 +3,8 @@ import logging
 
 import win32com.client
 
-from ..documents import (BORDER_TOP, BORDER_LEFT, 
-                         BORDER_BOTTOM, BORDER_RIGHT, 
+from ..documents import (BORDER_TOP, BORDER_LEFT,
+                         BORDER_BOTTOM, BORDER_RIGHT,
                          CellRange, SheetDocument, WorkbookDocument,
                          load_workbook)
 
@@ -14,8 +14,9 @@ logger = logging.getLogger('sheetparser')
 
 '''works with any Excel version but VERY slow'''
 
+
 class win32Cell(object):
-    BORDER_TOP_ID, BORDER_LEFT_ID, BORDER_BOTTOM_ID, BORDER_RIGHT_ID = 3,1,4,2
+    BORDER_TOP_ID, BORDER_LEFT_ID, BORDER_BOTTOM_ID, BORDER_RIGHT_ID = 3, 1, 4, 2
 
     def __init__(self, cell, wksheet):
         self._cell = cell
@@ -28,10 +29,10 @@ class win32Cell(object):
         if self._border_mask is None:
             borders = self._cell.Borders
             border_mask = 0
-            for mask,idx in ((BORDER_TOP, self.BORDER_TOP_ID),
-                             (BORDER_LEFT, self.BORDER_LEFT_ID),
-                             (BORDER_BOTTOM, self.BORDER_BOTTOM_ID),
-                             (BORDER_RIGHT, self.BORDER_RIGHT_ID)):
+            for mask, idx in ((BORDER_TOP, self.BORDER_TOP_ID),
+                              (BORDER_LEFT, self.BORDER_LEFT_ID),
+                              (BORDER_BOTTOM, self.BORDER_BOTTOM_ID),
+                              (BORDER_RIGHT, self.BORDER_RIGHT_ID)):
                 border_mask |= mask * (borders[idx].LineStyle != -4142)
             self._border_mask = border_mask
         return self._border_mask
@@ -41,17 +42,18 @@ class win32Cell(object):
 
     @property
     def color(self):
-        b,r,g,a = struct.Struct('4B').unpack(
+        b, r, g, a = struct.Struct('4B').unpack(
             struct.Struct('I').pack(
                 int(self._cell.Interior.Color)))
-        return b,r,g,a
+        return b, r, g, a
 
     @property
     def value(self):
         value = self._cell.Value
-        if value is None: return EMPTY_CELL
+        if value is None:
+            return EMPTY_CELL
         return value
-    
+
     @property
     def is_empty(self):
         return self._cell.Value is None or self._cell.Value == ''
@@ -63,7 +65,7 @@ def get_range_boundaries(range):
     left = range.Column
     right = left + range.Columns.Count
     return (top, left, bottom, right)
-    
+
 
 class win32ExcelSheet(CellRange, SheetDocument):
     def __init__(self, wksheet):
@@ -82,11 +84,11 @@ class win32ExcelSheet(CellRange, SheetDocument):
         return "<win32ExcelSheet %s>" % self.name
 
 
-class win32ExcelWorkbook(WorkbookDocument):    
+class win32ExcelWorkbook(WorkbookDocument):
     def __init__(self, filename, with_formatting=True):
-        logger.info('Open file %s'%filename)
+        logger.info('Open file %s' % filename)
         self.xc = win32com.client.Dispatch('Excel.Application')
-        self.wbk = self.xc.Workbooks.Open(filename, ReadOnly = True, UpdateLinks = False)
+        self.wbk = self.xc.Workbooks.Open(filename, ReadOnly=True, UpdateLinks=False)
 
     def __iter__(self):
         return (win32ExcelSheet(s) for s in self.wbk.Sheets)

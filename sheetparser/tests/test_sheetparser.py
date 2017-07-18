@@ -31,7 +31,7 @@ class DummySheet(SheetDocument, CellRange):
         self.name = name
         self.rge = np.array(array)
         self.left = self.top = 0
-        self.bottom, self.right= self.rge.shape
+        self.bottom, self.right = self.rge.shape
 
     def is_hidden(self):
         return False
@@ -39,10 +39,10 @@ class DummySheet(SheetDocument, CellRange):
     def abscell(self, row, col):
         return DummyCell(self.rge[row, col])
 
-    cell = abscell #NO!!
+    cell = abscell  # NO!!
 
     def __repr__(self):
-        return "<DummySheet %s>"%self.rge
+        return "<DummySheet %s>" % self.rge
 
 
 class DummyCell(object):
@@ -52,7 +52,9 @@ class DummyCell(object):
 
     @property
     def is_empty(self):
-        return self.value == 0
+        if isinstance(self.value,np.ndarray):
+            return np.isnan(self.value[0])
+        return self.value == ''
 
 
 def to_list_value(l):
@@ -61,7 +63,7 @@ def to_list_value(l):
 
 class TestColIterator(unittest.TestCase):
     def test_row_iters(self):
-        test_array = [[0, 0, 1, 1, 0]]*3
+        test_array = [[0, 0, 1, 1, 0]] * 3
         sheet = DummySheet('test', test_array)
         it = RbColIterator(sheet)
         for col in zip(*test_array):
@@ -85,20 +87,20 @@ class TestColIterator(unittest.TestCase):
     def test_subrange(self):
         test_array = np.arange(20, dtype=int).reshape(4, 5)
         sheet = DummySheet('test', test_array)
-        r = CellRange(sheet, 0, 0, 1, 1) #top left is 7, bottom right is 13
+        r = CellRange(sheet, 0, 0, 1, 1)  # top left is 7, bottom right is 13
         it = RbColIterator(r)
         sub_array = test_array[0:1, 0:1]
         for col in zip(*sub_array):
             self.assertSequenceEqual(to_list_value(six.next(it)), list(col))
 
-    # 0  1  2  3  4
-    # 5  6  7  8  9
-    # 10 11 12 13 14
-    # 15 16 17 18 19
+    #  0  1  2  3  4
+    #  5  6  7  8  9
+    #  10 11 12 13 14
+    #  15 16 17 18 19
     def test_subrange2(self):
         test_array = np.arange(20, dtype=int).reshape(4, 5)
         sheet = DummySheet('test', test_array)
-        r = CellRange(sheet, 1, 2, 3, 4) #top left is 7, bottom right is 13
+        r = CellRange(sheet, 1, 2, 3, 4)  # top left is 7, bottom right is 13
         it = RbColIterator(r)
         sub_array = test_array[1:3, 2:4]
         for col in zip(*sub_array):
@@ -110,7 +112,7 @@ class TestColIterator(unittest.TestCase):
     def test_subsubrange(self):
         test_array = np.arange(20, dtype=int).reshape(4, 5)
         sheet = DummySheet('test', test_array)
-        r = CellRange(sheet, 1, 1, 5, 5) #top left is 7, bottom right is 13
+        r = CellRange(sheet, 1, 1, 5, 5)  # top left is 7, bottom right is 13
         sr = CellRange(r, 1, 1, 2, 2)
         it = RbRowIterator(sr)
         for row in test_array[2:3, 2:3]:
@@ -122,7 +124,7 @@ class TestArray(unittest.TestCase):
         test_array = np.array([[1]*5])
         sheet = DummySheet('test', test_array)
         pattern = Sheet('result', Rows,
-                        Many(Line, min=2)|Line('line'))
+                        Many(Line, min=2) | Line('line'))
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
         self.assertSequenceEqual(context.root['or_']['line'], [1, 1, 1, 1, 1])
@@ -130,12 +132,14 @@ class TestArray(unittest.TestCase):
 
 class TestBug(unittest.TestCase):
     def test_many_many(self):
-        sheet = DummySheet('dummy',[['h']*2,['l','d'],['']*2])
-        pattern = Sheet('e',Rows,
-                        Many('tables', 
-                             Sequence(Table('table',table_args = [GetValue, HeaderTableTransform(1,1),FillData],
-                                            stop = empty_line),
+        sheet = DummySheet('dummy', [['h']*2, ['l', 'd'], ['']*2])
+        pattern = Sheet('e', Rows,
+                        Many('tables',
+                             Sequence(Table('table',
+                                            table_args=[GetValue, HeaderTableTransform(1, 1), FillData,
+                                                        TableNotEmpty],
+                                            stop=empty_line),
                                       Many('between tables2', Empty))))
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
-        self.assertEquals(len(context.tables),1)
+        self.assertEquals(len(context.tables), 1)

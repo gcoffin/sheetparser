@@ -8,12 +8,13 @@ import re
 import six
 from six.moves import zip_longest
 
-from .utils import DoesntMatchException, EMPTY_CELL, ConfigurationError, instantiate_if_class_lst
+from .utils import (DoesntMatchException, EMPTY_CELL, ConfigurationError,
+                    instantiate_if_class_lst)
 
 
 class ResultContext(object):
-    '''An object that is passed through match methods to emit the
-    result. Implement emit is a concrete subclass'''
+    '''An object that is passed through match methods to store the
+    result. Implement emit in a concrete subclass'''
     def __init__(self):
         self.root = None
         self.stack = []
@@ -37,7 +38,7 @@ class ResultContext(object):
     def commit(self, o1, o2):
         raise NotImplementedError()
 
-    def debug(self,*args):
+    def debug(self, *args):
         pass
 
     def __enter__(self):
@@ -60,9 +61,9 @@ class AbstractVisitor(object):
             return getattr(self, self.dispatch[type_name])(o)
         elif hasattr(o, 'visit'):
             return o.visit(self)
-        elif isinstance(o,dict):
-            return {k:self(v) for k,v in o.items()}
-        elif isinstance(o,(list,tuple)):
+        elif isinstance(o, dict):
+            return {k: self(v) for k, v in o.items()}
+        elif isinstance(o, (list, tuple)):
             return [self(i) for i in o]
         else:
             return o
@@ -77,10 +78,10 @@ class QuickPrint(AbstractVisitor):
         'ResultTable': 'visit_table_with_header'
         }
 
-    def __init__(self,*show):
+    def __init__(self, *show):
         if not show:
             show = None
-        elif show[0]==None:
+        elif show[0] is None:
             show = ()
         self.show = show
 
@@ -91,14 +92,16 @@ class QuickPrint(AbstractVisitor):
         return six.text_type(o)
 
     def visit_table_with_header(self, o):
-        data = {'_header': getattr(o,'top_headers',''),
-                '_column': getattr(o,'left_headers',''),
-                '_top_left': getattr(o,'top_left',''),
-                '_data': (len(o.data),max(len(i) for i in o.data) if o.data else 0)
+        data = {'_header': getattr(o, 'top_headers', ''),
+                '_column': getattr(o, 'left_headers', ''),
+                '_top_left': getattr(o, 'top_left', ''),
+                '_data': (len(o.data), max(len(i) for i in o.data)
+                          if o.data else 0)
                 }
         if self.show is None:
             return data
-        return {k:data[k] for k in self.show}
+        return {k: data[k] for k in self.show}
+
 
 # Classes for PythonObjectContext
 class ResultObject(object):
@@ -134,7 +137,8 @@ class ResultDict(ResultObject, dict):
 
     def __repr__(self):
         return "Dict %s (%s)" % (
-            self.name,list(self.keys()))
+            self.name, list(self.keys()))
+
 
 class ResultList(ResultObject, list):
     def visit(self, visitor):
@@ -166,7 +170,7 @@ class StripCellLine(object):
         self.left = left
         self.right = right
 
-    def get_mask(self,line):
+    def get_mask(self, line):
         return [cell.is_empty for cell in line]
 
     def __call__(self, line):
@@ -179,9 +183,11 @@ class StripCellLine(object):
             line = line[empties.index(0):]
         return line
 
+
 class StripLine(StripCellLine):
-    def get_mask(self,line):
-        return [value==EMPTY_CELL for value in line]
+    def get_mask(self, line):
+        return [value == EMPTY_CELL for value in line]
+
 
 # todo: empty line has a different signification - need to fix that
 def non_empty(line):
@@ -202,28 +208,30 @@ class Match(object):
         matches
     '''
     def __init__(self, regex, position=None, combine=None):
-        if isinstance(regex,six.string_types):
+        if isinstance(regex, six.string_types):
             regex = re.compile(regex)
         self.regex = regex
         self.combine = None or any
         if isinstance(position, six.integer_types):
             self.position = [position]
         elif position is None:
-            self.position = slice(None,None)
+            self.position = slice(None, None)
         else:
             self.position = position
 
     def __call__(self, line):
         sline = line
-        if sline and hasattr(sline[0],'value'):
+        if sline and hasattr(sline[0], 'value'):
             sline = [cell.value for cell in line]
         sline = [six.text_type(i) for i in sline]
         if isinstance(self.position, slice):
-            if not self.combine(self.regex.match(p) for p in sline[self.position]):
-                raise DoesntMatchException("%s doesn't match %s" % 
-                                           (sline[self.position], self.regex.pattern))
+            if not self.combine(self.regex.match(p)
+                                for p in sline[self.position]):
+                raise DoesntMatchException("%s doesn't match %s" %
+                                           (sline[self.position],
+                                            self.regex.pattern))
         elif not self.combine(self.regex.match(sline[p]) for p in self.position):
-            raise DoesntMatchException("%s doesn't match %s" % 
+            raise DoesntMatchException("%s doesn't match %s" %
                                        (sline, self.regex.pattern))
         return line
 
@@ -234,12 +242,12 @@ def get_value(line):
 
 
 def match_if(fun):
-    def __match(line,fun=fun):
+    def __match(line, fun=fun):
         if not fun(line):
             raise DoesntMatchException
         return line
     return __match
-    
+
 
 class ResultLine(ResultObject, list):
     def set_args(self, transforms=None):
@@ -248,27 +256,30 @@ class ResultLine(ResultObject, list):
     def visit(self, visitor):
         visitor.visit_line(self)
 
-    def set_value(self,line):
+    def set_value(self, line):
         line = list(line)
         for t in self._transforms:
             line = t(line)
         try:
             self[:] = line
         except TypeError as e:
-            six.raise_from(TypeError('One of the transforms did not return a list, check line_args'),
+            six.raise_from(TypeError('One of the transforms '
+                                     'did not return a list, check line_args'),
                            e)
+
 
 class ResultTable(ResultObject):
     '''An object to store the content of a matched Table.
 This is a'''
-    def __init__(self, name, transforms=None , iffail='no match'):
+    def __init__(self, name, transforms=None, iffail='no match'):
         self.name = name
         self.data = []
         self.count = 0
         self.set_args(transforms, iffail)
 
-    def set_args(self, transforms=None , iffail='no match'):
-        self.transforms = instantiate_if_class_lst(transforms or [], TableTransform)
+    def set_args(self, transforms=None, iffail='no match'):
+        self.transforms = instantiate_if_class_lst(transforms or [],
+                                                   TableTransform)
         self.iffail = {'no match': DoesntMatchException,
                        'fail': None}[iffail]
         for transform in self.transforms:
@@ -282,7 +293,7 @@ This is a'''
         self.count += 1
 
     def wrap(self):
-        for transform in self.transforms:            
+        for transform in self.transforms:
             try:
                 transform.wrap(self)
             except Exception as e:
@@ -301,7 +312,7 @@ class PythonObjectContext(ResultContext):
     initial hierarchy of patterns"""
     types = {'list': ResultList,
              'dict': ResultDict,
-             'line': ResultLine, 
+             'line': ResultLine,
              'table': ResultTable}
 
     def __init__(self):
@@ -331,49 +342,53 @@ class PythonObjectContext(ResultContext):
 
     __str__ = __repr__
 
+
 class ListContext(PythonObjectContext):
     '''a context that returns a dictionary where the key is the name
     of the pattern'''
     class DefaultResult(dict):
-        def __init__(self,name):
+        def __init__(self, name):
             self.name = name
             dict.__init__(self)
-        def append(self,arg):
+
+        def append(self, arg):
             name, value = arg
-            self.setdefault(name,[]).append(value)
+            self.setdefault(name, []).append(value)
+
         def __getattr__(self, key):
             try:
                 return self[key]
             except KeyError:
                 raise AttributeError(key)
 
-    types = { 'list': DefaultResult,
-              'dict': DefaultResult,
-              'line': ResultLine,
-              'table': ResultTable }
+    types = {'list': DefaultResult,
+             'dict': DefaultResult,
+             'line': ResultLine,
+             'table': ResultTable}
 
     def emit(self, name, o):
         self.current.append((name, o))
 
     def commit(self, o1, o2):
-        if isinstance(o2,ListContext.DefaultResult):
+        if isinstance(o2, ListContext.DefaultResult):
             o1.update(o2)
         else:
-            o1.append((o2.name,o2))
+            o1.append((o2.name, o2))
 
 
 class DebugContext(ListContext):
     '''A result context that implements the debug function'''
-    def debug(self,*args):
-        print(' '*len(self.stack),*args)
+    def debug(self, *args):
+        print(' '*len(self.stack), *args)
 
     def pop(self):
-        self.debug(' '*len(self.stack),'--')
-        super(DebugContext,self).pop()
+        self.debug(' '*len(self.stack), '--')
+        super(DebugContext, self).pop()
 
-    def commit(self,*args):
-        self.debug(' '*len(self.stack),'++')
-        super(DebugContext,self).commit(*args)
+    def commit(self, *args):
+        self.debug(' '*len(self.stack), '++')
+        super(DebugContext, self).commit(*args)
+
 
 class TableTransform(object):
     def init(self, table):
@@ -388,39 +403,44 @@ class TableTransform(object):
 
 class TableNotEmpty(TableTransform):
     def process_line(self, table, line):
-        if not any(line): return None
+        if not any(line):
+            return None
         return line
 
     def wrap(self, table):
         if not table.data:
             raise DoesntMatchException('TableNotEmpty failed: No data in table')
 
+
 class GetValue(TableTransform):
     """Transforms a list of cells into a list of strings. All built in
     processors expect GetValue to be included as the first
     transformation."""
-    def __init__(self,include_merged=True):
+    def __init__(self, include_merged=True):
         self.include_merged = include_merged
 
-    def process_line(self,table,line):
+    def process_line(self, table, line):
         if self.include_merged:
             return [x.value for x in line]
         else:
             return [x.value for x in line if not x.is_merged]
 
+
 class IgnoreIf(TableTransform):
-    def __init__(self,test):
+    def __init__(self, test):
         self.test = test
 
-    def process_line(self,table,line):
+    def process_line(self, table, line):
         if not self.test(line):
             return line
         return None
+
 
 class FillData(TableTransform):
     """Adds the line to the table data"""
     def process_line(self, table, line):
         table.data.append(line)
+
 
 class HeaderTableTransform(TableTransform):
     """Extract the first lines and first columns
@@ -438,7 +458,7 @@ class HeaderTableTransform(TableTransform):
         table.top_left = [[] for i in range(self.left_column)]
         table.top_headers = []
 
-    def _append_to_cols(self,columns,line):
+    def _append_to_cols(self, columns, line):
         for h, c in zip_longest(columns, line):
             h.append(c)
 
@@ -458,14 +478,15 @@ class HeaderTableTransform(TableTransform):
             return line
         return None
 
-    def wrap(self,table):
-        if len(getattr(table,'top_headers',[]))<self.top_header:
+    def wrap(self, table):
+        if len(getattr(table, 'top_headers', [])) < self.top_header:
             raise DoesntMatchException
-        if len(getattr(table,'left_headers',[]))<self.left_column:
+        if len(getattr(table, 'left_headers', [])) < self.left_column:
             raise DoesntMatchException
 
+
 class KeepOnly(TableTransform):
-    def __init__(self,left_header=None,top_header=None):
+    def __init__(self, left_header=None, top_header=None):
         self.left_header = left_header
         self.top_header = top_header
 
@@ -473,29 +494,37 @@ class KeepOnly(TableTransform):
         if self.top_header:
             table.top_headers = [table.top_headers[i] for i in self.top_header]
         if self.left_header:
-            table.left_headers = [table.left_headers[i] for i in self.left_header]
+            table.left_headers = [table.left_headers[i]
+                                  for i in self.left_header]
 
 
 class FillHeaderBlanks(TableTransform):
     '''Replaces empty strings with previous data'''
-    def __init__(self,*indexes,**kwargs):
-        self.which = kwargs.get('which','top_headers')
-        if not self.which in ['top_headers', 'left_headers']:
+    def __init__(self, *indexes, **kwargs):
+        if not indexes:
+            raise ConfigurationError('No indexes in FillHeaderBlanks')
+        self.which = kwargs.get('which', 'top_headers')
+        if self.which not in ['top_headers', 'left_headers']:
             raise ConfigurationError('"which" must be top_headers or left_headers')
         self.indexes = indexes
 
     def wrap(self, table):
         result = []
-        indexes = self.indexes 
-        for i,header in enumerate(getattr(table,self.which)):
+        indexes = self.indexes
+        for i, header in enumerate(getattr(table, self.which)):
             result.append(_repeat_existing(header) if i in indexes else header)
-        setattr(table,self.which, result)
+        setattr(table, self.which, result)
 
-RepeatExisting = lambda *rows:FillHeaderBlanks(*rows, which='top_headers')
+
+# Caml case for backward compatibility (when it was a class)
+def RepeatExisting(*rows):
+    return FillHeaderBlanks(*rows, which='top_headers')
+
 
 def _find_non_empty_rows(list_of_lists):
     return [i for i, line in enumerate(list_of_lists)
             if any(x != EMPTY_CELL for x in line)]
+
 
 class RemoveEmptyLines(TableTransform):
     '''Remove empyt lines or empty columns in the table. Note: could
@@ -511,8 +540,8 @@ class RemoveEmptyLines(TableTransform):
         if self.line_type == 'columns':
             Transpose().wrap(table)
         data_rows = _find_non_empty_rows(table.data)
-        table.data = [table.data[i] for i in data_rows] 
-        if hasattr(table,'left_headers'):
+        table.data = [table.data[i] for i in data_rows]
+        if hasattr(table, 'left_headers'):
             tlf = transpose(table.left_headers)
             table.left_headers = transpose(tlf[i] for i in data_rows)
         if self.line_type == 'columns':
@@ -525,14 +554,13 @@ class ToMap(TableTransform):
     values are the table data"""
     def wrap(self, table):
         result = {}
-        for lefts, row in zip_longest(
-            zip_longest(*table.left_headers), table.data):
-            for tops, cell in zip_longest(
-                zip_longest(*table.top_headers), row):
+        for lefts, row in zip_longest(zip_longest(
+                *table.left_headers), table.data):
+            for tops, cell in zip_longest(zip_longest(*table.top_headers), row):
                 key = tuple(lefts)+tuple(tops)
                 result[key] = cell
         table.data = result
-        
+
 
 def _join_header(lines, char):
     return [char.join("%s" % s for s in u) for u in zip_longest(*lines)]
@@ -569,9 +597,27 @@ def transpose(list_of_lists):
 class Transpose(TableTransform):
     """Transforms lines into columns and columns to lines"""
     def wrap(self, table):
-        if hasattr(table,'top_headers') and hasattr(table,'left_headers'):
-            table.top_headers, table.left_headers = table.left_headers, table.top_headers
+        if hasattr(table, 'top_headers') and hasattr(table, 'left_headers'):
+            table.top_headers, table.left_headers = (
+                table.left_headers, table.top_headers)
         table.data = transpose(table.data)
+
+
+def parse_time_func(*formats):
+    if not formats:
+        raise ConfigurationError('Expect to have at least one date format to parse')
+
+    def parse_(s, formats=formats):
+        e = None
+        for format in formats:
+            try:
+                return datetime.datetime.strptime(s, format)
+            except ValueError as e_:
+                e = e_
+                continue
+        raise e # there has to be an error
+
+    return parse_
 
 
 class ToDate(TableTransform):
@@ -581,8 +627,9 @@ class ToDate(TableTransform):
         self.header_id = header_id
         self.is_top = is_top
         if isinstance(strftime, six.string_types):
-            self.strftime = (lambda s, format=strftime:
-                             datetime.datetime.strptime(s, format))
+            self.strftime = parse_time_func(strftime)
+        elif isinstance(strftime, (tuple, list)):
+            self.strftime = parse_time_func(*strftime)
         else:
             self.strftime = strftime
         self.join = join

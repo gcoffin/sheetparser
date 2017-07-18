@@ -24,27 +24,32 @@ Licensed under the GNU General Public Licence v3 (GPLv3)
 https://www.gnu.org/licenses/gpl-3.0.txt
 """
 
-__version__ = "0.1.1"
-__author__ = "Guillaume Coffin <guill.coffin@gmail.com>"
-__license__ = 'GPL v3'
-__copyright__ = 'Copyright 2017 Guillaume Coffin'
-
 from .utils import *
 from .documents import *
 from .patterns import *
 from .results import *
 
-__all__ = ['DoesntMatchException', 'QuickPrint', 'Sequence', 'Many', 'Maybe', 'Workbook', 'Range',
-           'Sheet', 'no_vertical', 'no_horizontal', 'empty_line',
+
+__version__ = "0.1.1"
+__author__ = "Guillaume Coffin <guill.coffin@gmail.com>"
+__license__ = 'GPL v3'
+__copyright__ = 'Copyright 2017 Guillaume Coffin'
+
+__all__ = ['DoesntMatchException', 'QuickPrint',
+           'Workbook', 'Range', 'Sheet',
+           'no_vertical', 'no_horizontal', 'empty_line',
            'TableTransform', 'TableNotEmpty', 'FillData',
-           'get_value', 'Match', 'StripLine', 'GetValue', 'match_if','KeepOnly',
-           'IgnoreIf',
-           'HeaderTableTransform', 'RepeatExisting', 'RemoveEmptyLines', 'ToMap',
+           'get_value', 'Match', 'StripLine', 'GetValue', 'match_if',
+           'KeepOnly', 'IgnoreIf', 'HeaderTableTransform', 'RepeatExisting',
+           'RemoveEmptyLines', 'ToMap',
            'MergeHeader', 'Transpose', 'ToDate', 'Table', 'DEFAULT_TRANSFORMS',
-           'CellRange', 'OrPattern',
-           'FlexibleRange', 'Line', 'Empty', 'Rows','VisibleRows',
-           'Columns', 'Document', 'BORDER_TOP', 'BORDER_LEFT', 'BORDER_BOTTOM',
-           'BORDER_RIGHT', 'BORDERS_VERTICAL', 'BORDERS_HORIZONTAL', 'EMPTY_CELL',
+           'CellRange', 'OrPattern', 'Sequence', 'Many', 'Maybe',
+           'FlexibleRange', 'Line', 'Empty', 'Rows',
+           'VisibleRows', 'Columns',
+           'Document',
+           'BORDER_TOP', 'BORDER_LEFT', 'BORDER_BOTTOM',
+           'BORDER_RIGHT', 'BORDERS_VERTICAL', 'BORDERS_HORIZONTAL',
+           'EMPTY_CELL',
            'numrow', 'RbColIterator', 'RbRowIterator',
-           'PythonObjectContext', 'ResultContext', 'ListContext', 'DebugContext',
-           'load_backend', 'load_workbook']
+           'PythonObjectContext', 'ResultContext', 'ListContext',
+           'DebugContext', 'load_backend', 'load_workbook']

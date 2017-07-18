@@ -1,8 +1,8 @@
 """uses openpyxl as the engine to read the Excel sheet."""
 
-# color index: -8 and use http://blog.softartisans.com/2013/05/13/kb-excels-color-palette-explained/
+# color index: -8 and use
+# http://blog.softartisans.com/2013/05/13/kb-excels-color-palette-explained/
 from __future__ import print_function
-import os
 import six
 import logging
 import re
@@ -11,26 +11,28 @@ import openpyxl
 import openpyxl.styles
 import openpyxl.comments
 
-from ..documents import (BORDER_TOP, BORDER_LEFT, 
-                         BORDER_BOTTOM, BORDER_RIGHT, 
-                         CellRange, SheetDocument, WorkbookDocument,
-                         load_workbook)
+from ..documents import (BORDER_TOP, BORDER_LEFT,
+                         BORDER_BOTTOM, BORDER_RIGHT,
+                         CellRange, SheetDocument, WorkbookDocument)
 from ..utils import EMPTY_CELL
 
 
 SHEETSTATE_VISIBLE = openpyxl.worksheet.Worksheet.SHEETSTATE_VISIBLE
 logger = logging.getLogger('sheetparser')
 
+
 def color_tuple(hexastring):
-    if not re.match('[0-9A-F]{6}',hexastring):
+    if not re.match('[0-9A-F]{6}', hexastring):
         return None
-    return tuple(int(x+y,16) for x,y in zip(hexastring[::2],hexastring[1::2]))[-3:] # can come with alpha channel
+    # can come with alpha channel: keep only last 3
+    return tuple(int(x+y, 16) for x, y in
+                 zip(hexastring[::2], hexastring[1::2]))[-3:]
 
 
 # solution to the theme in wksheet_fmt.parent.loaded_theme.decode('utf-8')
 
 class Fill(object):
-    def __init__(self,cell):
+    def __init__(self, cell):
         fill = cell.fill
         book = cell.parent.parent
         self.type = fill.tagname
@@ -38,18 +40,18 @@ class Fill(object):
         self.color2 = None
         if self.type == 'patternFill':
             self.pattern = fill.patternType
-            if self.pattern is not None: 
-                self.color1 = self.get_color(fill.fgColor,book)
-                self.color2 = self.get_color(fill.bgColor,book)
+            if self.pattern is not None:
+                self.color1 = self.get_color(fill.fgColor, book)
+                self.color2 = self.get_color(fill.bgColor, book)
         else:
             raise NotImplementedError()
 
-    def get_color(self,color,book):
+    def get_color(self, color, book):
         if color.type == 'theme':
-            return {'theme':color.theme}
+            return {'theme': color.theme}
         elif color.type == 'indexed':
             index = color.index
-            if not isinstance(index,str):
+            if not isinstance(index, str):
                 try:
                     index = book._colors[index]
                 except IndexError:
@@ -61,11 +63,12 @@ class Fill(object):
             raise ValueError('Unknown color type')
 
     def __repr__(self):
-        return "<Fill %s %s %s %s>"%(self.type,self.pattern,self.color1,self.color2)
-        
+        return "<Fill %s %s %s %s>" % (self.type, self.pattern,
+                                       self.color1, self.color2)
+
 
 class Formatting(object):
-    def __init__(self,cell):
+    def __init__(self, cell):
         self._cell = cell
         self._border_mask = None
         self._fill = None
@@ -94,11 +97,12 @@ class Formatting(object):
     def is_filled(self):
         return self.fill.type != 'patternFill' or self.fill.pattern is not None
 
+
 class opxlCell(object):
     def __init__(self, value, cell, wksheet_fmt, is_merged):
         self._cell = cell
         self.value = EMPTY_CELL if value is None else value
-        self._wksheet_fmt = wksheet_fmt #used to write back
+        self._wksheet_fmt = wksheet_fmt  # used to write back
         self._formatting = None
         self.is_merged = is_merged
 
@@ -113,7 +117,7 @@ class opxlCell(object):
 
     def __repr__(self):
         return "<opxlCell %s %s>" % (self._cell.row, self._cell.column)
-        
+
     @property
     def border_mask(self):
         return self.formatting.border_mask
@@ -128,18 +132,18 @@ class opxlCell(object):
     @property
     def fill(self):
         return self.formatting.fill
-    
+
     @property
     def is_empty(self):
         return self.value == EMPTY_CELL
 
-    def set_value(self,value):
+    def set_value(self, value):
         self.get_cell().value = value
 
-    def set_style(self,style):
+    def set_style(self, style):
         self.get_cell().style = style
 
-    def set_comment(self,text,author):
+    def set_comment(self, text, author):
         cell = self.get_cell()
         comment = cell.comment
         if not comment:
@@ -148,12 +152,13 @@ class opxlCell(object):
             comment.text = text
             comment.author = author
 
+
 class EmptyCell(opxlCell):
 
     def __init__(self, column, row, sheet):
         self.column = column
         self.row = row
-        super(EmptyCell,self).__init__(None, None, sheet, False)
+        super(EmptyCell, self).__init__(None, None, sheet, False)
 
     def get_cell(self):
         if self._cell is None:
@@ -187,7 +192,7 @@ class opxlExcelSheet(SheetDocument, CellRange):
     def is_hidden(self):
         return self.wksheet_data.sheet_state != SHEETSTATE_VISIBLE
 
-    def is_hidden_row(self,rowidx):
+    def is_hidden_row(self, rowidx):
         return self.wksheet_fmt.row_dimensions[rowidx + 1].hidden
 
     def cell(self, row, col):
@@ -199,12 +204,12 @@ class opxlExcelSheet(SheetDocument, CellRange):
             abs_row, abs_col = self.merged[abs_row, abs_col]
         try:
             return opxlCell(
-                self.wksheet_data.cell(row=abs_row, column=abs_col).value, 
+                self.wksheet_data.cell(row=abs_row, column=abs_col).value,
                 (self.wksheet_fmt.cell(row=abs_row, column=abs_col)
                  if self.wksheet_fmt else None),
                 self.wksheet_fmt, is_merged)
         except IndexError:
-            return EmptyCell(row,col,self.wksheet_fmt)
+            return EmptyCell(row, col, self.wksheet_fmt)
 
     def __repr__(self):
         return "<opxlExcelSheet %s>" % self.name
@@ -213,7 +218,7 @@ class opxlExcelSheet(SheetDocument, CellRange):
 class opxlExcelWorkbook(WorkbookDocument):
     """A class to open workbooks and obtain sheets"""
     def __init__(self, filename, with_formatting=True):
-        # I'd like to open it readonly but then the merged cells 
+        # I'd like to open it readonly but then the merged cells
         # are not loaded
         if with_formatting:
             self.wbk_fmt = openpyxl.load_workbook(filename=filename)
@@ -221,16 +226,19 @@ class opxlExcelWorkbook(WorkbookDocument):
             self.wbk_fmt = None
         # and we need the data too because cell values are the formulas!!
         self.wbk_data = openpyxl.load_workbook(filename=filename, data_only=True)
-        
+
     def __iter__(self):
         return (self[s] for s in self.wbk_data.get_sheet_names())
 
     def __getitem__(self, name_or_id):
         if isinstance(name_or_id, six.string_types):
             return opxlExcelSheet(self.wbk_data.get_sheet_by_name(name_or_id),
-                                  self.wbk_fmt.get_sheet_by_name(name_or_id) if self.wbk_fmt else None)
+                                  self.wbk_fmt.get_sheet_by_name(name_or_id)
+                                  if self.wbk_fmt else None)
         else:
             return opxlExcelSheet(self.wbk_data.worksheets[id],
-                                  self.wbk_fmt.worksheets[id] if self.wbk_fmt else None)
+                                  self.wbk_fmt.worksheets[id]
+                                  if self.wbk_fmt else None)
+
 
 load_workbook = opxlExcelWorkbook

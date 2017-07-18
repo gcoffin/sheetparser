@@ -6,10 +6,11 @@ import datetime
 import xlrd
 import six
 
-from ..documents import (BORDER_TOP, BORDER_LEFT, 
-                         BORDER_BOTTOM, BORDER_RIGHT, 
+from ..documents import (BORDER_TOP, BORDER_LEFT,
+                         BORDER_BOTTOM, BORDER_RIGHT,
                          CellRange, SheetDocument, WorkbookDocument,
                          load_workbook)
+
 
 class xlrdCell(object):
     def __init__(self, cell, wksheet, is_merged):
@@ -20,8 +21,9 @@ class xlrdCell(object):
 
     @property
     def value(self):
-        if self._cell.ctype == 3: # it's a date!
-            datetuple = xlrd.xldate_as_tuple(self._cell.value, self._wksheet.book.datemode)
+        if self._cell.ctype == 3:  # it's a date!
+            datetuple = xlrd.xldate_as_tuple(self._cell.value,
+                                             self._wksheet.book.datemode)
             if any(datetuple[:3]):
                 return datetime.datetime(*datetuple)
             else:
@@ -56,18 +58,17 @@ class xlrdCell(object):
     def fill(self):
         return self.formatting.fill
 
-    
     @property
     def is_filled(self):
         return self.formatting.is_filled
 
 
 class Fill(object):
-    PATTERN = {0:None,
-               1:'solid'}
+    PATTERN = {0: None,
+               1: 'solid'}
 
-    def __init__(self,xf_record,book):
-        self.type = 'patternFill' # xlrd + formatting --> .xls, only supports patterns
+    def __init__(self, xf_record, book):
+        self.type = 'patternFill'  # xlrd + formatting --> .xls, only supports patterns
         self.pattern = self.PATTERN.get(xf_record.background.fill_pattern)
         if self.pattern is not None:
             self.color1 = book.colour_map[xf_record.background.pattern_colour_index]
@@ -77,7 +78,8 @@ class Fill(object):
             self.color2 = None
 
     def __repr__(self):
-        return "<Fill %s %s %s %s>"%(self.type,self.pattern,self.color1,self.color2)
+        return "<Fill %s %s %s %s>" % (self.type, self.pattern, self.color1, self.color2)
+
 
 class XfCell(object):
     def __init__(self, xf_index, wksheet):
@@ -91,15 +93,15 @@ class XfCell(object):
         if self._borders is None:
             border = self._xf_record.border
             self._borders = ((BORDER_TOP*(border.top_line_style != 0)) |
-                            (BORDER_LEFT*(border.left_line_style != 0)) |
-                            (BORDER_BOTTOM*(border.bottom_line_style != 0)) |
-                            (BORDER_RIGHT*(border.right_line_style != 0)))
+                             (BORDER_LEFT*(border.left_line_style != 0)) |
+                             (BORDER_BOTTOM*(border.bottom_line_style != 0)) |
+                             (BORDER_RIGHT*(border.right_line_style != 0)))
         return self._borders
 
     @property
     def fill(self):
         if self._fill is None:
-            self._fill = Fill(self._xf_record,self._wksheet.book)
+            self._fill = Fill(self._xf_record, self._wksheet.book)
         return self._fill
 
     @property
@@ -116,7 +118,7 @@ class xlrdExcelSheet(SheetDocument, CellRange):
             rlo, rhi, clo, chi = crange
             for rowx in range(rlo, rhi):
                 for colx in range(clo, chi):
-                    if (rlo,clo) != (rowx,colx):
+                    if (rlo, clo) != (rowx, colx):
                         self.merged[rowx, colx] = (rlo, clo)
         self.top, self.left = 0, 0
         self.bottom = wksheet.nrows
@@ -125,14 +127,15 @@ class xlrdExcelSheet(SheetDocument, CellRange):
     def is_hidden(self):
         return self.wksheet.visibility != 0
 
-    def is_hidden_row(self,rowidx):
+    def is_hidden_row(self, rowidx):
         row_info = self.wksheet.rowinfo_map.get(rowidx)
-        if row_info is None: return False
+        if row_info is None:
+            return False
         return row_info.hidden
 
     def cell(self, row, col, ignore_merged=False):
         is_merged = False
-        if (row,col) in self.merged:
+        if (row, col) in self.merged:
             is_merged = True
             row, col = self.merged[row, col]
         return xlrdCell(self.wksheet.cell(row, col), self.wksheet, is_merged)
@@ -141,7 +144,7 @@ class xlrdExcelSheet(SheetDocument, CellRange):
         return "<xlrdExcelSheet %s>" % self.name
 
 
-class xlrdExcelWorkbook(WorkbookDocument):    
+class xlrdExcelWorkbook(WorkbookDocument):
     def __init__(self, filename, with_formatting=True):
         '''with formatting is required for merged cells and border detection'''
         self.wbk = xlrd.open_workbook(filename=filename,
@@ -157,5 +160,6 @@ class xlrdExcelWorkbook(WorkbookDocument):
             return xlrdExcelSheet(self.wbk.sheet_by_name(name_or_id))
         else:
             return xlrdExcelSheet(self.wbk.sheet_by_index(name_or_id))
+
 
 load_workbook = xlrdExcelWorkbook

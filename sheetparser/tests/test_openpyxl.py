@@ -1,4 +1,4 @@
-from .common import *
+from sheetparser.tests.common import *
 
 class TestReadSheetOX(TestReadSheetBase, unittest.TestCase):
     backend = 'sheetparser.backends._openpyxl'

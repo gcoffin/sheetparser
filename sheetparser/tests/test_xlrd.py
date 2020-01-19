@@ -1,4 +1,4 @@
-from .common import *
+from sheetparser.tests.common import *
 
 
 class TestReadSheetXLRD(TestReadSheetBase, unittest.TestCase):
@@ -22,7 +22,7 @@ class TestFormatXLRD(TestFormat, unittest.TestCase):
         self.assertEqual(sheet.cell(0, 6).fill.type, 'patternFill')
         self.assertEqual(sheet.cell(0, 6).fill.color1, (255, 102, 0))
 
-        self.assertEqual(sheet.cell(0, 7).value, "(200, 201, 202)")
+        self.assertEqual(sheet.cell(0, 7).value, "(200,201,202)")
         self.assertEqual(sheet.cell(0, 7).fill.type, 'patternFill')
         self.assertEqual(sheet.cell(0, 7).fill.color1, (192, 192, 192))
 

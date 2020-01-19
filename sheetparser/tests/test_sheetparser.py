@@ -142,4 +142,4 @@ class TestBug(unittest.TestCase):
                                       Many('between tables2', Empty))))
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
-        self.assertEquals(len(context.tables), 1)
+        self.assertEqual(len(context.tables), 1)

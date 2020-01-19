@@ -248,8 +248,8 @@ class TestComplex(LoadWorkbook):
                         Line('after'))
         context = PythonObjectContext()
         pattern.match_range(self.wbk['Sheet5'], context)
-        self.assertEquals(len(context.many), 4)
-        self.assertEquals(context.after, [2, 4, 6])
+        self.assertEqual(len(context.many), 4)
+        self.assertEqual(context.after, [2, 4, 6])
 
     def test_color(self):
         sh = self.wbk['Sheet5']
@@ -272,7 +272,7 @@ class TestComplex(LoadWorkbook):
         context = ListContext()
         pattern.match_range(self.wbk['Sheet5'], context)
         dct = dict(context.root)
-        self.assertEquals(dct['table'][0].data,
+        self.assertEqual(dct['table'][0].data,
                           [[1, 2, 3], [3, 4, 5]])
 
     def test_complex(self):
@@ -304,8 +304,8 @@ class TestComplex(LoadWorkbook):
         context = ListContext()
         pattern.match_range(sheet, context)
         dct = context.root
-        self.assertEquals(set(dct.keys()), {'__meta', 't1', 'line2', 'line1', 'line3', 't1', 't2', 't3'})
+        self.assertEqual(set(dct.keys()), {'__meta', 't1', 'line2', 'line1', 'line3', 't1', 't2', 't3'})
         self.assertListEqual(dct['line3'], [['End']])
-        self.assertEquals(dct['t1'][0].top_left[0][0], 'A more complex example')
+        self.assertEqual(dct['t1'][0].top_left[0][0], 'A more complex example')
         self.assertListEqual(dct['t2'][0].top_left, [['Yet another table']])
         self.assertListEqual(dct['t3'][0].top_left, [['Another table']])

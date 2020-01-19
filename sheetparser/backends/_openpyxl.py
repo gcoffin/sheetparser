@@ -228,12 +228,12 @@ class opxlExcelWorkbook(WorkbookDocument):
         self.wbk_data = openpyxl.load_workbook(filename=filename, data_only=True)
 
     def __iter__(self):
-        return (self[s] for s in self.wbk_data.get_sheet_names())
+        return (self[s] for s in self.wbk_data.sheetnames)
 
     def __getitem__(self, name_or_id):
         if isinstance(name_or_id, six.string_types):
-            return opxlExcelSheet(self.wbk_data.get_sheet_by_name(name_or_id),
-                                  self.wbk_fmt.get_sheet_by_name(name_or_id)
+            return opxlExcelSheet(self.wbk_data[name_or_id],
+                                  self.wbk_fmt[name_or_id]
                                   if self.wbk_fmt else None)
         else:
             return opxlExcelSheet(self.wbk_data.worksheets[id],

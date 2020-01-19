@@ -34,7 +34,7 @@ class rawSheet(SheetDocument, CellRange):
         self.data = values
         self.top, self.left = (0, 0)
         self.bottom = len(values)
-        self.right = max(len(i) for i in values)
+        self.right = max((len(i) for i in values), default=0)
 
     def is_hidden(self):
         return False

@@ -155,13 +155,15 @@ class RangeAnd(NamedPattern, AbstractRangePattern):
         return self
 
 
-class OrPattern(LineIteratorPattern):
+class OrPattern(NamedPattern, LineIteratorPattern):
     """matches the first pattern and if it fails tries the seconds.
 
     :param Pattern pattern1: first pattern to try
     :param Pattern pattern2: fall back patter
     """
-    def __init__(self, *args):
+    @default(str_or_none, name='or_')
+    def __init__(self,name, *args):
+        self.name = name
         self.patterns = [instantiate_if_class(p, LineIteratorPattern)
                          for p in args]
 
@@ -175,7 +177,7 @@ class OrPattern(LineIteratorPattern):
         for pattern in self.patterns:
             with line_iterator.rollback_if_fail(reraise=False):
                 # ignore what was pushed in the context in case of failure
-                with context.push_named('or_', 'dict'):
+                with context.push_named(self.name, 'dict'):
                     pattern.match_line_iterator(line_iterator, context)
                     return
         raise DoesntMatchException
@@ -324,7 +326,7 @@ class Workbook(Pattern):
                     self._match_range_s(s, names_dct.pop(s.name), context)
                 else:
                     for regex, pattern in self.re_list:
-                        if regex.match(s.name):
+                        if regex.match(six.text_type(s.name)):
                             self._match_range_s(s, pattern, context)
                             break
                     else:

@@ -198,6 +198,13 @@ def non_empty(line):
     return line
 
 
+def _array_access(array,positions):
+    if isinstance(positions,slice):
+        return array[positions]
+    else:
+        return [array[i] for i in positions]
+    
+
 class Match(object):
     '''A transformer that matches lines that contain the given
     regex. Use combine to decide if all or any item should match
@@ -211,7 +218,7 @@ class Match(object):
         if isinstance(regex, six.string_types):
             regex = re.compile(regex)
         self.regex = regex
-        self.combine = None or any
+        self.combine = combine or any
         if isinstance(position, six.integer_types):
             self.position = [position]
         elif position is None:
@@ -224,15 +231,10 @@ class Match(object):
         if sline and hasattr(sline[0], 'value'):
             sline = [cell.value for cell in line]
         sline = [six.text_type(i) for i in sline]
-        if isinstance(self.position, slice):
-            if not self.combine(self.regex.match(p)
-                                for p in sline[self.position]):
-                raise DoesntMatchException("%s doesn't match %s" %
-                                           (sline[self.position],
-                                            self.regex.pattern))
-        elif not self.combine(self.regex.match(sline[p]) for p in self.position):
+        if not self.combine([self.regex.match(p) for p in _array_access(sline,self.position)]):
             raise DoesntMatchException("%s doesn't match %s" %
-                                       (sline, self.regex.pattern))
+                                       (sline[self.position],
+                                        self.regex.pattern))
         return line
 
 
@@ -240,6 +242,13 @@ def get_value(line):
     '''A transformer that converts a list of cells to a list of values'''
     return [c.value if not c.is_merged else EMPTY_CELL for c in line]
 
+def table_transform(**kwargs):
+    dct={}
+    if 'wrap' in kwargs:
+        dct['wrap'] =lambda self,table,fun=kwargs['wrap']: fun(table)
+    if 'process_line' in kwargs:
+        dct['process_line'] = lambda self,table,line,fun=kwargs['process_line']: fun(table,line)
+    return type('table_tranform',(TableTransform,),dct)
 
 def match_if(fun):
     def __match(line, fun=fun):
@@ -338,7 +347,7 @@ class PythonObjectContext(ResultContext):
         return self.root[name]
 
     def __repr__(self):
-        return "<PythonObjectContext %s>" % self.root
+        return "<%s %s>" % (self.__class__.__name__,self.root)
 
     __str__ = __repr__
 
@@ -355,6 +364,10 @@ class ListContext(PythonObjectContext):
             name, value = arg
             self.setdefault(name, []).append(value)
 
+        def update(self,o):
+            for k,v in o.items():
+                self.setdefault(k,[]).extend(v)
+            
         def __getattr__(self, key):
             try:
                 return self[key]
@@ -374,7 +387,6 @@ class ListContext(PythonObjectContext):
             o1.update(o2)
         else:
             o1.append((o2.name, o2))
-
 
 class DebugContext(ListContext):
     '''A result context that implements the debug function'''
@@ -486,16 +498,18 @@ class HeaderTableTransform(TableTransform):
 
 
 class KeepOnly(TableTransform):
-    def __init__(self, left_header=None, top_header=None):
+    def __init__(self, left_header=None, top_header=None,data=None):
         self.left_header = left_header
         self.top_header = top_header
+        self.data = data
 
     def wrap(self, table):
         if self.top_header:
-            table.top_headers = [table.top_headers[i] for i in self.top_header]
+            table.top_headers = _array_access(table.top_headers,self.top_header)
         if self.left_header:
-            table.left_headers = [table.left_headers[i]
-                                  for i in self.left_header]
+            table.left_headers = _array_access(table.left_headers,self.left_header)
+        if self.data:
+            table.data = _array_access(table.data,self.data)
 
 
 class FillHeaderBlanks(TableTransform):

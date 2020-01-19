@@ -24,7 +24,7 @@ MARGIN = 1
 MIN_INTERSECT = 4
 PAD = ' '
 CHAR_SIZE = 4.7
-RE_LONG_SPACES = re.compile('( {2, })')
+RE_LONG_SPACES = re.compile(' {2}')
 
 
 @functools.total_ordering
@@ -134,12 +134,15 @@ class TextFrame(object):
         char_size = self.position.w/len(self.text)
         x0 = self.position.x0
         sub_text = iter(RE_LONG_SPACES.split(self.text))
-        for t in sub_text:
-            x1 = x0 + char_size * len(t)
-            tpos = Position(x0, self.position.y0,
-                            self.position.x1, self.position.y1)
-            yield TextFrame(tpos, t)
-            x0 = x1 + char_size * len(next(sub_text))  # for spaces
+        try:
+            for t in sub_text:
+                x1 = x0 + char_size * len(t)
+                tpos = Position(x0, self.position.y0,
+                                self.position.x1, self.position.y1)
+                yield TextFrame(tpos, t)
+                x0 = x1 + char_size * len(next(sub_text))  # for spaces
+        except StopIteration:
+            pass
 
     def __eq__(self, o):
         return self.position.x0 == o.position.x0
@@ -238,8 +241,11 @@ class PdfTable(object):
         self._calculate_rows()  # check for missing lines
 
     def _calculate_columns(self):
-        self.columns = sorted(i.position.x_int
-                              for i in self.aligned_frames[0].frames if i)
+        if self.aligned_frames:
+            self.columns = sorted(i.position.x_int
+                                  for i in self.aligned_frames[0].frames if i)
+        else:
+            self.columns = []
         for row in self.aligned_frames[1:]:
             self._add_row(row.frames)
 
@@ -364,7 +370,7 @@ def read_pdf(fp, password='', *page_numbers):
     codec = 'utf-8'
     laparams = LAParams()
     laparams.all_texts = False
-    device = TextAnalyzer(rsrcmgr, sys.stdout, codec=codec, laparams=laparams)
+    device = TextAnalyzer(rsrcmgr, sys.stdout, laparams=laparams)
     interpreter = PDFPageInterpreter(rsrcmgr, device)
     # Process each page contained in the document.
     for page in PDFPage.create_pages(document):

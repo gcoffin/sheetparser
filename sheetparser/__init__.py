@@ -24,11 +24,10 @@ Licensed under the GNU General Public Licence v3 (GPLv3)
 https://www.gnu.org/licenses/gpl-3.0.txt
 """
 
-from .utils import *
 from .documents import *
 from .patterns import *
 from .results import *
-
+from .utils import *
 
 __version__ = "0.1.1"
 __author__ = "Guillaume Coffin <guill.coffin@gmail.com>"

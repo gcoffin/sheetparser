@@ -1,21 +1,17 @@
-import os
-import unittest
-import six
-import numpy as np  # used in client modules (import * from)
 import datetime
+import os
 
-from sheetparser import (Document, CellRange, RbColIterator, RbRowIterator,
-                         DoesntMatchException, Sheet, Many, Line, PythonObjectContext,
-                         load_backend, load_workbook, ResultContext, Columns, Rows,
+import six
+
+from sheetparser import (CellRange, DoesntMatchException, Sheet, Many, Line, PythonObjectContext,
+                         load_backend, load_workbook, Columns, Rows,
                          Range, Table, FillData, HeaderTableTransform,
                          RemoveEmptyLines, Empty, FlexibleRange, Transpose,
                          Workbook, BORDERS_VERTICAL, DEFAULT_TRANSFORMS,
                          ListContext, RepeatExisting, MergeHeader, GetValue,
                          ToMap, TableNotEmpty, no_horizontal, ToDate, get_value,
-                         Match, empty_line, DebugContext, StripLine,
-                         Sequence, StripCellLine, VisibleRows
+                         Match, empty_line, StripCellLine
                          )
-from sheetparser.documents import SheetDocument
 
 
 class LoadWorkbook:
@@ -49,16 +45,16 @@ class TestReadSheetBase(LoadWorkbook):
 
 
 class TestFormat(LoadWorkbook):
-
     date_format = '%Y/%b'
 
     def test_read_formatted_table(self):
         pattern = Workbook({'Sheet3':
-                            Sheet('sheet', Rows,
-                                  Line, Empty,
-                                  Table(stop=no_horizontal,
-                                        table_args=(DEFAULT_TRANSFORMS +
-                                                    [RemoveEmptyLines, RemoveEmptyLines('columns')])))
+                                Sheet('sheet', Rows,
+                                      Line, Empty,
+                                      Table(stop=no_horizontal,
+                                            table_args=(DEFAULT_TRANSFORMS +
+                                                        [RemoveEmptyLines,
+                                                         RemoveEmptyLines('columns')])))
                             })
         context = ListContext()  # PythonObjectContext
         pattern.match_workbook(self.wbk, context)
@@ -68,12 +64,12 @@ class TestFormat(LoadWorkbook):
 
     def test_merged(self):
         pattern = Workbook({
-                'Sheet4': Sheet('sheet', Rows,
-                                Empty,
-                                Table(table_args=[GetValue, HeaderTableTransform(2), FillData,
-                                                  RepeatExisting(0), MergeHeader([0, 1], ch='/'),
-                                                  ToDate(0, self.date_format)]))
-                })
+            'Sheet4': Sheet('sheet', Rows,
+                            Empty,
+                            Table(table_args=[GetValue, HeaderTableTransform(2), FillData,
+                                              RepeatExisting(0), MergeHeader([0, 1], ch='/'),
+                                              ToDate(0, self.date_format)]))
+        })
         context = ListContext()  # PythonObjectContext
         pattern.match_workbook(self.wbk, context)
         result = dict(context.root)
@@ -84,16 +80,16 @@ class TestFormat(LoadWorkbook):
 
     def test_merged2(self):
         pattern = Workbook({
-                'Sheet4': Sheet('sheet', Rows,
-                                Empty,
-                                Table('ignore'),
-                                Many(Empty, 2),
-                                Table(table_args=[GetValue, HeaderTableTransform(3),
-                                                  FillData, RepeatExisting(0),
-                                                  MergeHeader([0, 1], ch='/'),
-                                                  ToDate(0, self.date_format),
-                                                  ToMap]))
-                })
+            'Sheet4': Sheet('sheet', Rows,
+                            Empty,
+                            Table('ignore'),
+                            Many(Empty, 2),
+                            Table(table_args=[GetValue, HeaderTableTransform(3),
+                                              FillData, RepeatExisting(0),
+                                              MergeHeader([0, 1], ch='/'),
+                                              ToDate(0, self.date_format),
+                                              ToMap]))
+        })
         context = ListContext()  # PythonObjectContext
         pattern.match_workbook(self.wbk, context)
         result = dict(context.root)
@@ -126,7 +122,9 @@ class TestSimplePattern(LoadWorkbook):
                                   ['a31', 'b31', 'c31']])
 
     def test_pattern2(self):
-        pattern = Range('sheet', Rows, Table('t21', table_args=[GetValue, HeaderTableTransform(1, 1), FillData, RemoveEmptyLines('columns')]))
+        pattern = Range('sheet', Rows, Table('t21',
+                                             table_args=[GetValue, HeaderTableTransform(1, 1),
+                                                         FillData, RemoveEmptyLines('columns')]))
         range = CellRange(self.wbk['Sheet1'], 1, 1, 5, 10)
         context = ListContext()
         pattern.match_range(range, context)
@@ -193,7 +191,8 @@ class TestSimplePattern(LoadWorkbook):
         pattern = Sheet('sheet', Rows,
                         Many((Table('t1',
                                     table_args=[GetValue, HeaderTableTransform,
-                                                TableNotEmpty, FillData, ])+Empty) | Line('line')))
+                                                TableNotEmpty, FillData, ]) + Empty) | Line(
+                            'line')))
         context = PythonObjectContext()
         pattern.match_range(sheet, context)
         self.assertEqual(context.many[0].add_.t1.data[0][0], 'a11')
@@ -242,6 +241,7 @@ class TestComplex(LoadWorkbook):
             if not line[0].is_filled:
                 raise DoesntMatchException
             return line
+
         pattern = Sheet('', Columns,
                         Many(Line(line_args=[has_color,
                                              get_value])),
@@ -262,6 +262,7 @@ class TestComplex(LoadWorkbook):
     def test_flexible(self):
         def has_nocolor(line, linecount):
             return not line[0].is_filled
+
         pattern = Sheet('result', Columns,
                         FlexibleRange('yellow',
                                       Rows, Line,
@@ -273,7 +274,7 @@ class TestComplex(LoadWorkbook):
         pattern.match_range(self.wbk['Sheet5'], context)
         dct = dict(context.root)
         self.assertEqual(dct['table'][0].data,
-                          [[1, 2, 3], [3, 4, 5]])
+                         [[1, 2, 3], [3, 4, 5]])
 
     def test_complex(self):
         sheet = self.wbk['Sheet6']
@@ -295,7 +296,8 @@ class TestComplex(LoadWorkbook):
                                                   get_value, Match('Result:', 0)])
                                             + Line('line3', [StripCellLine(), get_value]))
                                            | Line('line1')),
-                                      stop=lambda line, linecount: linecount > 2 and empty_line(line)
+                                      stop=lambda line, linecount: linecount > 2 and empty_line(
+                                          line)
                                       ),
                         Many(Empty),
                         FlexibleRange('f3', Rows,
@@ -304,7 +306,8 @@ class TestComplex(LoadWorkbook):
         context = ListContext()
         pattern.match_range(sheet, context)
         dct = context.root
-        self.assertEqual(set(dct.keys()), {'__meta', 't1', 'line2', 'line1', 'line3', 't1', 't2', 't3'})
+        self.assertEqual(set(dct.keys()),
+                         {'__meta', 't1', 'line2', 'line1', 'line3', 't1', 't2', 't3'})
         self.assertListEqual(dct['line3'], [['End']])
         self.assertEqual(dct['t1'][0].top_left[0][0], 'A more complex example')
         self.assertListEqual(dct['t2'][0].top_left, [['Yet another table']])

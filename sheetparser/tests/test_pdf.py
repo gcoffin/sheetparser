@@ -1,20 +1,10 @@
 import os
 import unittest
-import six
-import numpy as np
-import datetime
-from sheetparser import (Document, CellRange, RbColIterator, RbRowIterator,
-                         DoesntMatchException, Sheet, Many, Line, PythonObjectContext,
-                         load_backend, load_workbook, ResultContext, Columns, Rows,
-                         Range, Table, FillData, HeaderTableTransform,
-                         RemoveEmptyLines, Empty, FlexibleRange, Transpose,
-                         Workbook, BORDERS_VERTICAL, DEFAULT_TRANSFORMS,
-                         ListContext, RepeatExisting, MergeHeader, GetValue,
-                         ToMap, TableNotEmpty, no_horizontal, ToDate, get_value,
-                         Match, empty_line, DebugContext, StripLine,
-                         Sequence, StripCellLine
+
+from sheetparser import (Sheet, Line, PythonObjectContext,
+                         load_workbook, Rows,
+                         Table, Empty, Workbook
                          )
-from sheetparser.documents import SheetDocument
 
 
 class TestPdf(unittest.TestCase):

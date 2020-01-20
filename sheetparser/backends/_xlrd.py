@@ -3,13 +3,12 @@ the engine. Can read xls with formatting, or xlsx without
 formatting."""
 import datetime
 
-import xlrd
 import six
+import xlrd
 
 from ..documents import (BORDER_TOP, BORDER_LEFT,
                          BORDER_BOTTOM, BORDER_RIGHT,
-                         CellRange, SheetDocument, WorkbookDocument,
-                         load_workbook)
+                         CellRange, SheetDocument, WorkbookDocument)
 
 
 class xlrdCell(object):
@@ -92,10 +91,10 @@ class XfCell(object):
     def border_mask(self):
         if self._borders is None:
             border = self._xf_record.border
-            self._borders = ((BORDER_TOP*(border.top_line_style != 0)) |
-                             (BORDER_LEFT*(border.left_line_style != 0)) |
-                             (BORDER_BOTTOM*(border.bottom_line_style != 0)) |
-                             (BORDER_RIGHT*(border.right_line_style != 0)))
+            self._borders = ((BORDER_TOP * (border.top_line_style != 0)) |
+                             (BORDER_LEFT * (border.left_line_style != 0)) |
+                             (BORDER_BOTTOM * (border.bottom_line_style != 0)) |
+                             (BORDER_RIGHT * (border.right_line_style != 0)))
         return self._borders
 
     @property

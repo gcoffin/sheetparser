@@ -1,22 +1,21 @@
-from __future__ import print_function
 from __future__ import division
+from __future__ import print_function
 
-import sys
-import re
 import bisect
 import functools
-import six
 import logging
+import re
+import sys
 
-# pdfminer or pdfminer.six
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-from pdfminer.pdfparser import PDFParser
-from pdfminer.pdfdocument import PDFDocument, PDFTextExtractionNotAllowed
-
-from pdfminer.pdfpage import PDFPage
+import six
 from pdfminer.converter import TextConverter
 from pdfminer.layout import (LAParams, LTContainer,
                              LTFigure, LTTextLineHorizontal)
+from pdfminer.pdfdocument import PDFDocument, PDFTextExtractionNotAllowed
+# pdfminer or pdfminer.six
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.pdfparser import PDFParser
 
 from . import _array
 
@@ -54,11 +53,11 @@ class Interval(object):
 
     def dist(self, o):
         x, y = sorted([self, o])
-        return max(0, y.a-x.b)
+        return max(0, y.a - x.b)
 
     @property
     def middle(self):
-        return (self.a + self.b)/2
+        return (self.a + self.b) / 2
 
     @property
     def size(self):
@@ -85,8 +84,8 @@ class Position:
         self.x0, self.y0, self.x1, self.y1 = x0, y0, x1, y1
         self.h = self.y1 - self.y0
         self.w = self.x1 - self.x0
-        self.y_int = Interval(y0, y1, MARGIN*self.h)
-        self.x_int = Interval(x0, x1, MARGIN*self.w)
+        self.y_int = Interval(y0, y1, MARGIN * self.h)
+        self.x_int = Interval(x0, x1, MARGIN * self.w)
 
     def __str__(self):
         return " x, y = ( %.0f, %.0f ) w, h = ( %.0f, %.0f )" % (
@@ -116,7 +115,7 @@ class TextFrame(object):
 
     def split_vertical(self):
         lines = self.text.split('\n')
-        line_height = self.position.h/len(lines)
+        line_height = self.position.h / len(lines)
         for i, t in enumerate(lines):
             tpos = Position(self.position.x0,
                             self.position.y1 - (i + 1) * line_height,
@@ -131,7 +130,7 @@ class TextFrame(object):
         if not self.text:
             yield self.text
             return
-        char_size = self.position.w/len(self.text)
+        char_size = self.position.w / len(self.text)
         x0 = self.position.x0
         sub_text = iter(RE_LONG_SPACES.split(self.text))
         try:
@@ -185,7 +184,7 @@ class AlignedTextFrame(object):
         prev_pos_x = 0
         result = []
         for tf in sorted(self.frames):
-            result.append(PAD*int((tf.position.x0 - prev_pos_x)/tf.char_size))
+            result.append(PAD * int((tf.position.x0 - prev_pos_x) / tf.char_size))
             prev_pos_x = tf.position.x1
             result.append(tf.text)
         return ''.join(result)
@@ -204,6 +203,7 @@ class Page(object):
             self.aligned_frames.append(
                 AlignedTextFrame(frame.position.y_int, [frame]))
             return
+        i = 0
         for i in range(len(self.aligned_frames)):
             line = self.aligned_frames[i]
             alignment = line.is_aligned(frame)
@@ -215,10 +215,10 @@ class Page(object):
         if not candidates:
             if insert:
                 self.aligned_frames.insert(i, AlignedTextFrame(
-                        frame.position.y_int, [frame]))
+                    frame.position.y_int, [frame]))
             else:
                 self.aligned_frames.append(AlignedTextFrame(
-                        frame.position.y_int, [frame]))
+                    frame.position.y_int, [frame]))
         else:
             _, line = sorted(candidates)[-1]
             line.add_frame(frame)
@@ -267,8 +267,8 @@ class PdfTable(object):
         if len(centers) < 3:
             return centers
         #  median height between consecutive centers
-        candidate = sorted(i-j for i, j in zip(centers[:-1], centers[1:])
-                           )[len(centers)//2]
+        candidate = sorted(i - j for i, j in zip(centers[:-1], centers[1:])
+                           )[len(centers) // 2]
         _aligned_frames = []
         prev = None
         for aligned_frame in self.aligned_frames:
@@ -349,8 +349,9 @@ class TextAnalyzer(TextConverter):
                 for pageno, page in six.iteritems(self.pages)}
 
     def handle_undefined_char(self, font, cid):
-        '''A hacky solution for
-        https://stackoverflow.com/questions/34108647/why-character-id-160-is-not-recognised-as-unicode-in-pdfminer'''
+        """A hacky solution for
+        https://stackoverflow.com/questions/34108647/why-character-id-160-is-not-recognised-as-unicode-in-pdfminer
+        """
         if cid == 160:
             return ' '
         logging.info('undefined: %r, %r' % (font, cid))
@@ -367,7 +368,6 @@ def read_pdf(fp, password='', *page_numbers):
     if not document.is_extractable:
         raise PDFTextExtractionNotAllowed
     rsrcmgr = PDFResourceManager(caching=True)
-    codec = 'utf-8'
     laparams = LAParams()
     laparams.all_texts = False
     device = TextAnalyzer(rsrcmgr, sys.stdout, laparams=laparams)
@@ -379,7 +379,8 @@ def read_pdf(fp, password='', *page_numbers):
     return device.get_result()
 
 
-def load_workbook(fp, password='', **kwargs):
+def load_workbook(fp, password='', with_formatting=False):
+    assert not with_formatting
     if isinstance(fp, str):
         with open(fp, 'rb') as f:
             return _array.rawWorkbook(read_pdf(f, password))
@@ -395,7 +396,7 @@ def pdf2excel(inputname, outputname):
         try:
             pages = load_workbook(f)
             npages = [i.name for i in pages]
-            for i in range(min(npages), max(npages)+1):
+            for i in range(min(npages), max(npages) + 1):
                 ws = wb.create_sheet()
                 for row in pages[i].data:
                     ws.append(row)
@@ -404,6 +405,4 @@ def pdf2excel(inputname, outputname):
 
 
 if __name__ == '__main__':
-    inputname = sys.argv[1]
-    outputname = sys.argv[2]
-    pdf2excel(inputname, outputname)
+    pdf2excel(sys.argv[1], sys.argv[2])

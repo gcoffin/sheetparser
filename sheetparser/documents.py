@@ -10,14 +10,15 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import abc
-from abc import abstractmethod
+import importlib
 import os
 import sys
-import importlib
+from abc import abstractmethod
 
 import six
 
 from .utils import ConfigurationError, deprecated
+
 
 # Documents
 
@@ -74,6 +75,7 @@ class RollbackIterator(six.Iterator):
 
 class RbRowIterator(RollbackIterator):
     """Iterates on the rows of a range"""
+
     @property
     def is_complete(self):
         return self.idx >= self.rge.bottom
@@ -96,6 +98,7 @@ class RbVisibleRowIterator(RbRowIterator):
 
 class RbColIterator(RollbackIterator):
     """Iterates on the columns of a range"""
+
     @property
     def is_complete(self):
         return self.idx >= self.rge.right
@@ -107,6 +110,7 @@ class RbColIterator(RollbackIterator):
 
 class CellRange(Document):
     """A range (a 2D area) of cells, relative to a parent range"""
+
     def __init__(self, rge, top=None, left=None, bottom=None, right=None):
         self.rge = rge
         self.top = top or 0
@@ -159,6 +163,7 @@ def _abs_index(rge, i):
 
 class CellColumn(CellRange):
     """a vertical line of cells - a range of width 1"""
+
     def __init__(self, rge, col, top=None, bottom=None):
         self.rge = rge
         self.col = col
@@ -171,7 +176,7 @@ class CellColumn(CellRange):
 
     @property
     def right(self):
-        return self.col+1
+        return self.col + 1
 
     def __getitem__(self, i):
         if isinstance(i, slice):
@@ -186,7 +191,7 @@ class CellColumn(CellRange):
         return "<CellColumn %s %s>" % (self.rge, self.col)
 
     def __str__(self):
-        return 'CellColumn:'+str([i.value for i in self])
+        return 'CellColumn:' + str([i.value for i in self])
 
 
 class CellRow(CellRange):
@@ -202,7 +207,7 @@ class CellRow(CellRange):
 
     @property
     def bottom(self):
-        return self._row+1
+        return self._row + 1
 
     def is_hidden(self):
         return self.rge.is_hidden_row(self._row)
@@ -220,7 +225,7 @@ class CellRow(CellRange):
         return "<CellRow %s %s>" % (self.rge, self._row)
 
     def __str__(self):
-        return 'CellRow:'+str([i.value for i in self])
+        return 'CellRow:' + str([i.value for i in self])
 
 
 BORDER_TOP, BORDER_LEFT, BORDER_BOTTOM, BORDER_RIGHT = (1 << i for i in range(4))
@@ -279,6 +284,7 @@ class LazyModule(object):
 class WorkbookReader(dict):
     """a callable object that will call the proper
     backend to read the file"""
+
     def __init__(self):
         _openpyxl = LazyModule('sheetparser.backends._openpyxl')
         _xlrd = LazyModule('sheetparser.backends._xlrd')

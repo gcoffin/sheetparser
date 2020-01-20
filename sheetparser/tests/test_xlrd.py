@@ -1,3 +1,6 @@
+import unittest
+
+from sheetparser.patterns import VisibleRows
 from sheetparser.tests.common import *
 
 

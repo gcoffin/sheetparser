@@ -1,18 +1,14 @@
-import os
 import unittest
-import six
+
 import numpy as np
-import datetime
+import six
+
 from sheetparser import (Document, CellRange, RbColIterator, RbRowIterator,
                          DoesntMatchException, Sheet, Many, Line, PythonObjectContext,
-                         load_backend, load_workbook, ResultContext, Columns, Rows,
-                         Range, Table, FillData, HeaderTableTransform,
-                         RemoveEmptyLines, Empty, FlexibleRange, Transpose,
-                         Workbook, BORDERS_VERTICAL, DEFAULT_TRANSFORMS,
-                         ListContext, RepeatExisting, MergeHeader, GetValue,
-                         ToMap, TableNotEmpty, no_horizontal, ToDate, get_value,
-                         Match, empty_line, DebugContext, StripLine,
-                         Sequence, StripCellLine
+                         Rows,
+                         Table, FillData, HeaderTableTransform,
+                         Empty, GetValue,
+                         TableNotEmpty, empty_line, Sequence
                          )
 from sheetparser.documents import SheetDocument
 
@@ -52,7 +48,7 @@ class DummyCell(object):
 
     @property
     def is_empty(self):
-        if isinstance(self.value,np.ndarray):
+        if isinstance(self.value, np.ndarray):
             return np.isnan(self.value[0])
         return self.value == ''
 
@@ -73,7 +69,7 @@ class TestColIterator(unittest.TestCase):
             self.assertSequenceEqual(to_list_value(six.next(it)), list(row))
 
     def test_rowiter_rollback(self):
-        test_array = [[0, 0, 1, 1, 0]]*3
+        test_array = [[0, 0, 1, 1, 0]] * 3
         sheet = DummySheet('test', test_array)
         it = RbRowIterator(sheet)
         six.next(it)
@@ -121,7 +117,7 @@ class TestColIterator(unittest.TestCase):
 
 class TestArray(unittest.TestCase):
     def test_rollback(self):
-        test_array = np.array([[1]*5])
+        test_array = np.array([[1] * 5])
         sheet = DummySheet('test', test_array)
         pattern = Sheet('result', Rows,
                         Many(Line, min=2) | Line('line'))
@@ -132,11 +128,12 @@ class TestArray(unittest.TestCase):
 
 class TestBug(unittest.TestCase):
     def test_many_many(self):
-        sheet = DummySheet('dummy', [['h']*2, ['l', 'd'], ['']*2])
+        sheet = DummySheet('dummy', [['h'] * 2, ['l', 'd'], [''] * 2])
         pattern = Sheet('e', Rows,
                         Many('tables',
                              Sequence(Table('table',
-                                            table_args=[GetValue, HeaderTableTransform(1, 1), FillData,
+                                            table_args=[GetValue, HeaderTableTransform(1, 1),
+                                                        FillData,
                                                         TableNotEmpty],
                                             stop=empty_line),
                                       Many('between tables2', Empty))))

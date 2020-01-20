@@ -2,19 +2,20 @@
 # python 2 and 3 compatibility
 from __future__ import print_function
 from __future__ import unicode_literals
-import re
+
 import abc
+import re
 from abc import abstractmethod
 
 import six
 
-from .utils import (DoesntMatchException, ConfigurationError,
-                    instantiate_if_class, instantiate_if_class_lst)
-from .results import DEFAULT_TRANSFORMS
 from .documents import (CellRange, WorkbookDocument, SheetDocument,
                         RbRowIterator, RbColIterator, RbVisibleRowIterator,
                         BORDERS_VERTICAL,
                         BORDERS_HORIZONTAL)
+from .results import DEFAULT_TRANSFORMS
+from .utils import (DoesntMatchException, ConfigurationError,
+                    instantiate_if_class, instantiate_if_class_lst)
 
 
 def log_match_iterator(method):
@@ -24,14 +25,17 @@ def log_match_iterator(method):
                        else [i.value for i in line_iterator.peek]),
                       'Idx:', line_iterator.idx)
         return method(pattern, line_iterator, context)
+
     return __method
 
 
 def first_param(fun):
     """drops all arguments except the first one then calls the
     decorated function"""
+
     def __fun(*args):
         return fun(args[0])
+
     return __fun
 
 
@@ -51,10 +55,11 @@ def default(default_type, **kwargs):
                     args = args[1:]
                 else:
                     value = default_value
-                args = (value, ) + args
+                args = (value,) + args
             else:
-                args = (kwargs.pop(arg_name), )+args
+                args = (kwargs.pop(arg_name),) + args
             return fun(self, *args, **kwargs)
+
         return __fun
 
     return __decorated
@@ -161,8 +166,9 @@ class OrPattern(NamedPattern, LineIteratorPattern):
     :param Pattern pattern1: first pattern to try
     :param Pattern pattern2: fall back patter
     """
+
     @default(str_or_none, name='or_')
-    def __init__(self,name, *args):
+    def __init__(self, name, *args):
         self.name = name
         self.patterns = [instantiate_if_class(p, LineIteratorPattern)
                          for p in args]
@@ -187,6 +193,7 @@ class Sequence(NamedPattern, LineIteratorPattern):
     """matches the sub patterns in sequence. Will match all or nothing.
     Name is an optional parameter. If omitted, the name will be 'sequence'.
     """
+
     @default(str_or_none, name='sequence')
     def __init__(self, name, *patterns):
         """this is docstring
@@ -217,6 +224,7 @@ class Sequence(NamedPattern, LineIteratorPattern):
 class Many(NamedPattern, LineIteratorPattern):
     """Matches the subpattern several times. The number of times is
     limited by the parameters max and min. Name defaults to 'many'"""
+
     @default(str_or_none, name='many')
     def __init__(self, name, pattern, min=0, max=None):
         if not ((min is None or isinstance(min, six.integer_types)) and
@@ -261,6 +269,7 @@ class Many(NamedPattern, LineIteratorPattern):
 class Maybe(Many):
     """Matches the subpattern or nothing. Equivalent to ? in
     regexes"""
+
     @default(str_or_none, name='maybe')
     def __init__(self, name, pattern):
         super(Maybe, self).__init__(name, pattern, min=0, max=1)
@@ -278,6 +287,7 @@ class Workbook(Pattern):
         to a pattern. If a sheet matches the regex, then it will try
         to match the pattern.
     """
+
     @default(str_or_none, name='workbook')
     def __init__(self, name, patterns=None, **options):
         self.include_hidden = options.get('include_hidden', False)
@@ -344,6 +354,7 @@ class Workbook(Pattern):
 @six.add_metaclass(abc.ABCMeta)
 class RangePattern(NamedPattern, AbstractRangePattern):
     """Super class for all patterns that match a range"""
+
     def __init__(self, name, *patterns):
         self._patterns = list(patterns)
         super(RangePattern, self).__init__(name)
@@ -382,6 +393,7 @@ class Range(WithLayoutPattern):
     """A range of cells delimited by top, left, bottom,
     right. RangePatterns are to be used directly under Workbook.
     """
+
     def __init__(self, name, layout, *patterns, **kwargs):
         self.top, self.left, self.bottom, self.right = [
             kwargs.pop(n, None) for n in ('top', 'left', 'bottom', 'right')]
@@ -396,9 +408,9 @@ class Range(WithLayoutPattern):
 
     def emit_meta(self, sheet, context):
         context.emit('__meta', {
-                'range': (self.top, self.left, self.bottom, self.right),
-                'name': sheet.name,
-                })
+            'range': (self.top, self.left, self.bottom, self.right),
+            'name': sheet.name,
+        })
 
 
 class Sheet(WithLayoutPattern):
@@ -440,6 +452,7 @@ class Table(NamedPattern, LineIteratorPattern):
         True. It takes 2 parameters: the number of lines read so far
         and the line itself. By default, will stop on empty lines
     """
+
     @default(str_or_none, name='table')
     def __init__(self, name, table_args=DEFAULT_TRANSFORMS, stop=None):
         self.stop = stop or first_param(empty_line)
@@ -472,6 +485,7 @@ class FlexibleRange(WithLayoutPattern):
     :param int min: minimum length of the range
     :param int max: maximum length of the range (None for unbound)
     """
+
     @default(str_or_none, name='flexible')
     def __init__(self, name, layout, *patterns, **kwargs):
         self.stop = kwargs.pop('stop', None) or first_param(empty_line)
@@ -525,6 +539,7 @@ class Line(NamedPattern, LineIteratorPattern):
     :param list line_args: list of transforms to the result (strip,
     raise if empty...)
     """
+
     @default(str_or_none, name='line')
     def __init__(self, name, line_args=None):
         super(Line, self).__init__(name)
@@ -551,7 +566,7 @@ class Empty(LineIteratorPattern):
     def match_line_iterator(self, line_iterator, context):
         if line_iterator.is_complete:
             raise DoesntMatchException('%s expects a line' %
-                                       (self, ))
+                                       (self,))
         if not empty_line(line_iterator.peek):
             raise DoesntMatchException('%s not matched by %s' %
                                        (self, list(line_iterator.peek)))

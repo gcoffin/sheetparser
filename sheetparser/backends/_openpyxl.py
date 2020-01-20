@@ -3,19 +3,19 @@
 # color index: -8 and use
 # http://blog.softartisans.com/2013/05/13/kb-excels-color-palette-explained/
 from __future__ import print_function
-import six
+
 import logging
 import re
 
 import openpyxl
-import openpyxl.styles
 import openpyxl.comments
+import openpyxl.styles
+import six
 
 from ..documents import (BORDER_TOP, BORDER_LEFT,
                          BORDER_BOTTOM, BORDER_RIGHT,
                          CellRange, SheetDocument, WorkbookDocument)
 from ..utils import EMPTY_CELL
-
 
 SHEETSTATE_VISIBLE = openpyxl.worksheet.Worksheet.SHEETSTATE_VISIBLE
 logger = logging.getLogger('sheetparser')
@@ -25,7 +25,7 @@ def color_tuple(hexastring):
     if not re.match('[0-9A-F]{6}', hexastring):
         return None
     # can come with alpha channel: keep only last 3
-    return tuple(int(x+y, 16) for x, y in
+    return tuple(int(x + y, 16) for x, y in
                  zip(hexastring[::2], hexastring[1::2]))[-3:]
 
 
@@ -81,10 +81,10 @@ class Formatting(object):
                 self._border_mask = 0
             else:
                 self._border_mask = (
-                    (BORDER_TOP*(border.top.style is not None)) |
-                    (BORDER_LEFT*(border.left.style is not None)) |
-                    (BORDER_BOTTOM*(border.bottom.style is not None)) |
-                    (BORDER_RIGHT*(border.right.style is not None)))
+                        (BORDER_TOP * (border.top.style is not None)) |
+                        (BORDER_LEFT * (border.left.style is not None)) |
+                        (BORDER_BOTTOM * (border.bottom.style is not None)) |
+                        (BORDER_RIGHT * (border.right.style is not None)))
         return self._border_mask
 
     @property
@@ -217,6 +217,7 @@ class opxlExcelSheet(SheetDocument, CellRange):
 
 class opxlExcelWorkbook(WorkbookDocument):
     """A class to open workbooks and obtain sheets"""
+
     def __init__(self, filename, with_formatting=True):
         # I'd like to open it readonly but then the merged cells
         # are not loaded

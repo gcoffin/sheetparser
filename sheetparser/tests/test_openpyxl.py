@@ -1,4 +1,8 @@
+import unittest
+
+from sheetparser.patterns import VisibleRows
 from sheetparser.tests.common import *
+
 
 class TestReadSheetOX(TestReadSheetBase, unittest.TestCase):
     backend = 'sheetparser.backends._openpyxl'
@@ -19,8 +23,8 @@ class TestReadFormatOX(TestFormat, unittest.TestCase):
         sheet = self.wbk['Sheet7']
         self.assertEqual(sheet.cell(0, 6).value, "{'theme':5}")
         self.assertEqual(sheet.cell(0, 6).fill.type, 'patternFill')
-        self.assertEqual(sheet.cell(0, 6).fill.color1, {'theme':5})
-        
+        self.assertEqual(sheet.cell(0, 6).fill.color1, {'theme': 5})
+
     def test_hidden(self):
         sheet = self.wbk['Sheet7']
         test = [l[0].value for l in VisibleRows().iter_doc(sheet)]

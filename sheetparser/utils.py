@@ -1,6 +1,7 @@
-import six
-import warnings
 import functools
+import warnings
+
+import six
 
 EMPTY_CELL = ''
 
@@ -46,7 +47,7 @@ def instantiate_if_class(cls_or_inst, cls, **kwargs):
     result = cls_or_inst(**kwargs)
     if not isinstance(result, cls):
         raise ConfigurationError("Expected %s, got %s" % (
-                cls.__name__, type(result)))
+            cls.__name__, type(result)))
     return result
 
 

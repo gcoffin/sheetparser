@@ -1,13 +1,11 @@
-import struct
 import logging
+import struct
 
 import win32com.client
 
 from ..documents import (BORDER_TOP, BORDER_LEFT,
                          BORDER_BOTTOM, BORDER_RIGHT,
-                         CellRange, SheetDocument, WorkbookDocument,
-                         load_workbook)
-
+                         CellRange, SheetDocument, WorkbookDocument)
 from ..utils import EMPTY_CELL
 
 logger = logging.getLogger('sheetparser')
@@ -95,5 +93,6 @@ class win32ExcelWorkbook(WorkbookDocument):
 
     def __getitem__(self, name_or_id):
         return win32ExcelSheet(self.wbk.Sheets[name_or_id])
+
 
 load_workbook = win32ExcelWorkbook

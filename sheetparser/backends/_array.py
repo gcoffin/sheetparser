@@ -1,13 +1,14 @@
 """uses openpyxl as the engine to read the Excel sheet."""
 
 from __future__ import print_function
+
 import csv
-import six
 import logging
+
+import six
 
 from ..documents import (CellRange, SheetDocument, WorkbookDocument)
 from ..utils import EMPTY_CELL
-
 
 logger = logging.getLogger('sheetparser')
 
@@ -29,6 +30,7 @@ class rawCell(object):
 
 class rawSheet(SheetDocument, CellRange):
     """Wraps an array as a sheet for Sheet patterns"""
+
     def __init__(self, name, values):
         self.name = name
         self.data = values
@@ -51,6 +53,7 @@ class rawSheet(SheetDocument, CellRange):
 
 class rawWorkbook(WorkbookDocument):
     """A class to open workbooks and obtain sheets"""
+
     def __init__(self, values_map):
         self.data = values_map
 
@@ -61,7 +64,8 @@ class rawWorkbook(WorkbookDocument):
         return rawSheet(name_or_id, self.data[name_or_id])
 
 
-def load_workbook(filename, options=None):
+def load_workbook(filename, options=None, with_formatting=False):
+    assert not with_formatting
     options = options or {}
     with open(filename, 'rb') as f:
         return rawWorkbook({1: list(csv.reader(f, **options))})

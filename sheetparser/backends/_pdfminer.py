@@ -387,18 +387,23 @@ def load_workbook(fp, password='', **kwargs):
         return _array.rawWorkbook(read_pdf(fp, password))
 
 
-if __name__ == '__main__':
+def pdf2excel(inputname, outputname):
     import openpyxl
-    inputname = sys.argv[1]
-    outputname = sys.argv[2]
 
-    with file(inputname, 'rb') as f:
+    with open(inputname, 'rb') as f:
         wb = openpyxl.Workbook(write_only=True)
         try:
             pages = load_workbook(f)
-            for i in range(min(pages), max(pages)+1):
+            npages = [i.name for i in pages]
+            for i in range(min(npages), max(npages)+1):
                 ws = wb.create_sheet()
-                for row in pages[i].get_table():
+                for row in pages[i].data:
                     ws.append(row)
         finally:
             wb.save(outputname)
+
+
+if __name__ == '__main__':
+    inputname = sys.argv[1]
+    outputname = sys.argv[2]
+    pdf2excel(inputname, outputname)

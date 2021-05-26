@@ -1,13 +1,9 @@
-from __future__ import division
-from __future__ import print_function
-
 import bisect
 import functools
 import logging
 import re
 import sys
 
-import six
 from pdfminer.converter import TextConverter
 from pdfminer.layout import (LAParams, LTContainer,
                              LTFigure, LTTextLineHorizontal)
@@ -23,7 +19,7 @@ MARGIN = 1
 MIN_INTERSECT = 4
 PAD = ' '
 CHAR_SIZE = 4.7
-RE_LONG_SPACES = re.compile(' {2}')
+RE_LONG_SPACES = re.compile('(  +)')
 
 
 @functools.total_ordering

@@ -1,7 +1,6 @@
 import datetime
 import os
 
-import six
 
 from sheetparser import (CellRange, DoesntMatchException, Sheet, Many, Line, PythonObjectContext,
                          load_backend, load_workbook, Columns, Rows,
@@ -26,7 +25,7 @@ class TestReadSheetBase(LoadWorkbook):
 
     def test_empties(self):
         sheet = self.wbk['Sheet1']
-        row = six.next(CellRange(sheet, 1, 0, 2, 10).rows())
+        row = next(CellRange(sheet, 1, 0, 2, 10).rows())
         row = StripCellLine()(row)
         row = get_value(row)
         self.assertListEqual(row, ['table 1', 'a', 'b', 'c'])

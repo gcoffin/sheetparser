@@ -5,7 +5,6 @@ from __future__ import print_function
 import csv
 import logging
 
-import six
 
 from ..documents import (CellRange, SheetDocument, WorkbookDocument)
 from ..utils import EMPTY_CELL
@@ -58,7 +57,7 @@ class rawWorkbook(WorkbookDocument):
         self.data = values_map
 
     def __iter__(self):
-        return (rawSheet(i, data) for i, data in six.iteritems(self.data))
+        return (rawSheet(i, data) for i, data in self.data.items())
 
     def __getitem__(self, name_or_id):
         return rawSheet(name_or_id, self.data[name_or_id])

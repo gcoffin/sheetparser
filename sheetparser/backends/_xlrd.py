@@ -155,7 +155,7 @@ class xlrdExcelWorkbook(WorkbookDocument):
             self.wbk.release_resources()
 
     def __getitem__(self, name_or_id):
-        if isinstance(name_or_id, six.string_types):
+        if isinstance(name_or_id, str):
             return xlrdExcelSheet(self.wbk.sheet_by_name(name_or_id))
         else:
             return xlrdExcelSheet(self.wbk.sheet_by_index(name_or_id))

@@ -1,4 +1,7 @@
 import unittest
+import sys
+sys.path.append('.')
+
 
 from sheetparser.patterns import VisibleRows
 from sheetparser.tests.common import *
@@ -39,3 +42,6 @@ class TestSimplePatternOX(TestSimplePattern, unittest.TestCase):
 class TestComplexOX(TestComplex, unittest.TestCase):
     backend = 'sheetparser.backends._openpyxl'
     filename = 'test_table1.xlsx'
+
+if __name__ == '__main__':
+    unittest.main() 

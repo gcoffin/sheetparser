@@ -1,13 +1,11 @@
 # coding: utf-8
-# python 2 and 3 compatibility
 from __future__ import print_function
 from __future__ import unicode_literals
 
 import abc
 import re
 from abc import abstractmethod
-
-import six
+import warnings
 
 from .documents import (CellRange, WorkbookDocument, SheetDocument,
                         RbRowIterator, RbColIterator, RbVisibleRowIterator,
@@ -43,21 +41,23 @@ def default(default_type, **kwargs):
     """A decorator that assigns a default value to the
     first argument of a function if it doesn't match the
     default_type function"""
-    (arg_name, default_value), = six.iteritems(kwargs)
+    (arg_name, default_value), = kwargs.items()
 
     def __decorated(fun):
         def __fun(self, *args, **kwargs):
             if arg_name not in kwargs:
                 if len(args) == 0:
                     value = default_value
-                elif default_type(args[0]):
+                elif isinstance(args[0], default_type):
+                    warnings.warn(
+                        f"the default decorated is deprecated, "
+                        f"use {arg_name}={repr(default_value)} instead"
+                    )
                     value = args[0]
                     args = args[1:]
                 else:
                     value = default_value
-                args = (value,) + args
-            else:
-                args = (kwargs.pop(arg_name),) + args
+                kwargs[arg_name] = value
             return fun(self, *args, **kwargs)
 
         return __fun
@@ -65,12 +65,10 @@ def default(default_type, **kwargs):
     return __decorated
 
 
-def str_or_none(s):
-    return s is None or isinstance(s, six.string_types)
+str_or_none = str
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Pattern(object):
+class Pattern(abc.ABC):
     def __repr__(self):
         return "<%s>" % (self.__class__.__name__)
 
@@ -78,10 +76,9 @@ class Pattern(object):
         pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class NamedPattern(Pattern):
+class NamedPattern(Pattern, metaclass=abc.ABCMeta):
     def __init__(self, name):
-        if not (name is None or isinstance(name, six.string_types)):
+        if not (name is None or isinstance(name, str)):
             raise ValueError(
                 "%s expected name"
                 " to be a string, got %s" % (self.__class__, name))
@@ -91,8 +88,7 @@ class NamedPattern(Pattern):
         return "<%s %s>" % (self.__class__.__name__, self.name)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class LineIteratorPattern(Pattern):
+class LineIteratorPattern(Pattern, metaclass=abc.ABCMeta):
     def __or__(self, p):
         return OrPattern(self, p)
 
@@ -104,8 +100,7 @@ class LineIteratorPattern(Pattern):
         raise NotImplementedError
 
 
-@six.add_metaclass(abc.ABCMeta)
-class AbstractRangePattern(Pattern):
+class AbstractRangePattern(Pattern, metaclass=abc.ABCMeta):
     def __or__(self, p):
         return RangeOr(self, p)
 
@@ -119,7 +114,7 @@ class AbstractRangePattern(Pattern):
 
 class RangeOr(NamedPattern, AbstractRangePattern):
     @default(str_or_none, name='or')
-    def __init__(self, name, pattern1, pattern2):
+    def __init__(self, pattern1, pattern2, name='or'):
         self.pattern1 = instantiate_if_class(pattern1, AbstractRangePattern)
         self.pattern2 = instantiate_if_class(pattern2, AbstractRangePattern)
         super(RangeOr, self).__init__(name)
@@ -140,7 +135,7 @@ class RangeOr(NamedPattern, AbstractRangePattern):
 
 class RangeAnd(NamedPattern, AbstractRangePattern):
     @default(str_or_none, name='and_')
-    def __init__(self, name, *patterns):
+    def __init__(self, *patterns, name='and_'):
         self._patterns = list(patterns)
         super(RangeAnd, self).__init__(name)
 
@@ -168,8 +163,8 @@ class OrPattern(NamedPattern, LineIteratorPattern):
     """
 
     @default(str_or_none, name='or_')
-    def __init__(self, name, *args):
-        self.name = name
+    def __init__(self, *args, name='or_'):
+        super().__init__(name)
         self.patterns = [instantiate_if_class(p, LineIteratorPattern)
                          for p in args]
 
@@ -195,7 +190,7 @@ class Sequence(NamedPattern, LineIteratorPattern):
     """
 
     @default(str_or_none, name='sequence')
-    def __init__(self, name, *patterns):
+    def __init__(self, *patterns, name='sequence'):
         """this is docstring
 
         :param str name: the name
@@ -226,9 +221,9 @@ class Many(NamedPattern, LineIteratorPattern):
     limited by the parameters max and min. Name defaults to 'many'"""
 
     @default(str_or_none, name='many')
-    def __init__(self, name, pattern, min=0, max=None):
-        if not ((min is None or isinstance(min, six.integer_types)) and
-                (max is None or isinstance(max, six.integer_types))):
+    def __init__(self, pattern, min=0, max=None, name='many'):
+        if not ((min is None or isinstance(min, int)) and
+                (max is None or isinstance(max, int))):
             raise ConfigurationError('In Many, min and max need to be numbers')
         self.min = min
         self.max = max
@@ -271,11 +266,11 @@ class Maybe(Many):
     regexes"""
 
     @default(str_or_none, name='maybe')
-    def __init__(self, name, pattern):
+    def __init__(self, pattern, name='maybe'):
         super(Maybe, self).__init__(name, pattern, min=0, max=1)
 
 
-class Workbook(Pattern):
+class Workbook(NamedPattern):
     """A top level pattern to match a workbook. Call match_workbook on
     an opened workbook document (as provided by a backend)
 
@@ -289,7 +284,9 @@ class Workbook(Pattern):
     """
 
     @default(str_or_none, name='workbook')
-    def __init__(self, name, patterns=None, **options):
+    def __init__(self, patterns=None, **options):
+        self.name=options.pop('name')
+        super().__init__(self.name)
         self.include_hidden = options.get('include_hidden', False)
         self.seq_patterns = ()
         self.names_dct = {}
@@ -336,23 +333,22 @@ class Workbook(Pattern):
                     self._match_range_s(s, names_dct.pop(s.name), context)
                 else:
                     for regex, pattern in self.re_list:
-                        if regex.match(six.text_type(s.name)):
+                        if regex.match(s.name):
                             self._match_range_s(s, pattern, context)
                             break
                     else:
                         if self.seq_patterns:
-                            six.next(patterns_seq).match_range(s, context)
+                            next(patterns_seq).match_range(s, context)
             if self.seq_patterns:
                 try:
-                    six.next(patterns_seq)
+                    next(patterns_seq)
                 except StopIteration:
                     pass
                 else:
                     raise DoesntMatchException('Some sheets where not visited')
 
 
-@six.add_metaclass(abc.ABCMeta)
-class RangePattern(NamedPattern, AbstractRangePattern):
+class RangePattern(NamedPattern, AbstractRangePattern, metaclass=abc.ABCMeta):
     """Super class for all patterns that match a range"""
 
     def __init__(self, name, *patterns):
@@ -375,10 +371,9 @@ class RangePattern(NamedPattern, AbstractRangePattern):
                 pattern.match_line_iterator(it, context)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class WithLayoutPattern(RangePattern):
+class WithLayoutPattern(RangePattern, metaclass=abc.ABCMeta):
     def __init__(self, name, layout, *patterns):
-        if isinstance(layout, six.class_types):
+        if isinstance(layout, type):
             layout = layout()
         if not isinstance(layout, Layout):
             raise ConfigurationError("Expected layout, got %s" % (layout))
@@ -454,7 +449,7 @@ class Table(NamedPattern, LineIteratorPattern):
     """
 
     @default(str_or_none, name='table')
-    def __init__(self, name, table_args=DEFAULT_TRANSFORMS, stop=None):
+    def __init__(self, table_args=DEFAULT_TRANSFORMS, stop=None, name='table'):
         self.stop = stop or first_param(empty_line)
         assert callable(self.stop), "stop is not callable: %s" % stop
         self.table_args = table_args
@@ -487,10 +482,11 @@ class FlexibleRange(WithLayoutPattern):
     """
 
     @default(str_or_none, name='flexible')
-    def __init__(self, name, layout, *patterns, **kwargs):
+    def __init__(self, layout, *patterns, **kwargs):
         self.stop = kwargs.pop('stop', None) or first_param(empty_line)
         self.min = kwargs.pop('min', 1)
         self.max = kwargs.pop('max', None)
+        name = kwargs.pop('name')
         super(FlexibleRange, self).__init__(name, layout, *patterns)
 
     def assert_type(self, doc):
@@ -541,7 +537,7 @@ class Line(NamedPattern, LineIteratorPattern):
     """
 
     @default(str_or_none, name='line')
-    def __init__(self, name, line_args=None):
+    def __init__(self, line_args=None, name=''):
         super(Line, self).__init__(name)
         self.line_args = line_args or []
 
@@ -554,7 +550,7 @@ class Line(NamedPattern, LineIteratorPattern):
             line = context.current
             line.set_args(self.line_args)
             line.set_value(line_iterator.peek)
-        six.next(line_iterator)
+        next(line_iterator)
 
 
 class Empty(LineIteratorPattern):
@@ -571,14 +567,13 @@ class Empty(LineIteratorPattern):
             raise DoesntMatchException('%s not matched by %s' %
                                        (self, list(line_iterator.peek)))
         else:
-            six.next(line_iterator)
+            next(line_iterator)
 
 
 # Layouts
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Layout(object):
+class Layout(abc.ABC):
     @abstractmethod
     def iter_doc(self, doc):
         pass

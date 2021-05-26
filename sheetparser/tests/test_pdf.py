@@ -1,5 +1,9 @@
 import os
+from re import M
 import unittest
+import sys
+sys.path.append('.')
+
 
 from sheetparser import (Sheet, Line, PythonObjectContext,
                          load_workbook, Rows,
@@ -20,3 +24,7 @@ class TestPdf(unittest.TestCase):
         pattern.match_workbook(wbk, context)
         self.assertEqual(context[0].table.data[0][0], 'a11')
         self.assertEqual(context[0].line_1[0], 'line2')
+
+
+if __name__ == '__main__':
+    unittest.main()

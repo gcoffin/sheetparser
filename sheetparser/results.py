@@ -1,14 +1,11 @@
 # coding: utf-8
-# python 2 and 3 compatibility
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import abc
 import datetime
 import re
 
-import six
-from six.moves import zip_longest
+
+from itertools import zip_longest
 
 from .utils import (DoesntMatchException, EMPTY_CELL, ConfigurationError,
                     instantiate_if_class_lst)
@@ -56,8 +53,7 @@ class ResultContext(object):
         return False
 
 
-@six.add_metaclass(abc.ABCMeta)
-class AbstractVisitor(object):
+class AbstractVisitor(abc.ABC):
     def __call__(self, o):
         type_name = type(o).__name__
         if type_name in self.dispatch:
@@ -89,10 +85,10 @@ class QuickPrint(AbstractVisitor):
         self.show = show
 
     def visit_table(self, o):
-        return six.text_type(o)
+        return str(o)
 
     def visit_line(self, o):
-        return six.text_type(o)
+        return str(o)
 
     def visit_table_with_header(self, o):
         data = {'_header': getattr(o, 'top_headers', ''),
@@ -118,7 +114,7 @@ class ResultObject(object):
 
 class ResultDict(ResultObject, dict):
     def visit(self, visitor):
-        return {k: visitor(v) for (k, v) in six.iteritems(self)}
+        return {k: visitor(v) for (k, v) in self.items()}
 
     def add(self, name, value):
         suffix = None
@@ -157,7 +153,7 @@ class ResultList(ResultObject, list):
     def __repr__(self):
         return ("List %s (%s)" %
                 (self.name,
-                 ', '.join(six.text_type(i) for i in self)))
+                 ', '.join(str(i) for i in self)))
 
 
 def _rindex(lst, x):
@@ -220,11 +216,11 @@ class Match(object):
     '''
 
     def __init__(self, regex, position=None, combine=None):
-        if isinstance(regex, six.string_types):
+        if isinstance(regex, str):
             regex = re.compile(regex)
         self.regex = regex
         self.combine = combine or any
-        if isinstance(position, six.integer_types):
+        if isinstance(position, int):
             self.position = [position]
         elif position is None:
             self.position = slice(None, None)
@@ -235,7 +231,7 @@ class Match(object):
         sline = line
         if sline and hasattr(sline[0], 'value'):
             sline = [cell.value for cell in line]
-        sline = [six.text_type(i) for i in sline]
+        sline = [str(i) for i in sline]
         if not self.combine([self.regex.match(p) for p in _array_access(sline, self.position)]):
             raise DoesntMatchException("%s doesn't match %s" %
                                        (sline[self.position],
@@ -280,9 +276,10 @@ class ResultLine(ResultObject, list):
         try:
             self[:] = line
         except TypeError as e:
-            six.raise_from(TypeError('One of the transforms '
-                                     'did not return a list, check line_args'),
-                           e)
+            raise TypeError(
+                'One of the transforms '
+                'did not return a list, check line_args'
+                ) from e
 
 
 class ResultTable(ResultObject):
@@ -316,7 +313,7 @@ This is a'''
                 transform.wrap(self)
             except Exception as e:
                 if self.iffail is not None:
-                    six.raise_from(DoesntMatchException, e)
+                    raise DoesntMatchException() from e
                 else:
                     raise
 
@@ -660,7 +657,7 @@ class ToDate(TableTransform):
     def __init__(self, header_id, strftime, is_top=True, join='/'):
         self.header_id = header_id
         self.is_top = is_top
-        if isinstance(strftime, six.string_types):
+        if isinstance(strftime, str):
             self.strftime = parse_time_func(strftime)
         elif isinstance(strftime, (tuple, list)):
             self.strftime = parse_time_func(*strftime)

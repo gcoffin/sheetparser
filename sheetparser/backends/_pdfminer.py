@@ -291,7 +291,7 @@ class PdfTable(object):
                 for frame in aligned_frame.frames:
                     for i, col in enumerate(self.columns):
                         if col & frame.position.x_int:
-                            row[i] += six.text_type(frame.text)
+                            row[i] += str(frame.text)
                             break
             table.append(row)
         return table
@@ -340,13 +340,13 @@ class TextAnalyzer(TextConverter):
         self.render(ltpage)
 
     def all_text(self):
-        for pdfpage, page in sorted(six.iteritems(self.pages)):
+        for pdfpage, page in sorted(self.pages.items()):
             yield [aligned_frame.get_padded_texts()
                    for aligned_frame in page.aligned_frames]
 
     def get_result(self):
         return {pageno: PdfTable(page.aligned_frames).get_table()
-                for pageno, page in six.iteritems(self.pages)}
+                for pageno, page in sorted(self.pages.items())}
 
     def handle_undefined_char(self, font, cid):
         """A hacky solution for

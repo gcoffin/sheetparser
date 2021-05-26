@@ -30,10 +30,6 @@ class DoesntMatchException(Exception):
     pass
 
 
-def str_or_none(o):
-    return o is None or isinstance(o, six.string_types)
-
-
 def numrow(s):
     result = 0
     for i in s.strip().upper():

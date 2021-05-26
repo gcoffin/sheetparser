@@ -5,10 +5,6 @@ workbook, ranges, lines and columns.  Concrete implementations must be
 supplied by backends.
 """
 
-# python 2 and 3 compatibility
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import abc
 import importlib
 import os
@@ -27,8 +23,7 @@ class Document(object):
     pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class RollbackIterator(six.Iterator):
+class RollbackIterator(abc.ABC):
     """An iterator that can save its status to rollback if failure"""
 
     class SaveStatus(object):
@@ -233,8 +228,7 @@ BORDERS_VERTICAL = BORDER_RIGHT | BORDER_LEFT
 BORDERS_HORIZONTAL = BORDER_TOP | BORDER_BOTTOM
 
 
-@six.add_metaclass(abc.ABCMeta)
-class SheetDocument(Document):
+class SheetDocument(Document, metaclass=abc.ABCMeta):
     """Base class for sheets, to be implemented
     by a backend"""
 
@@ -255,8 +249,7 @@ class SheetDocument(Document):
         raise NotImplementedError
 
 
-@six.add_metaclass(abc.ABCMeta)
-class WorkbookDocument(Document):
+class WorkbookDocument(Document, metaclass=abc.ABCMeta):
     pass
 
 

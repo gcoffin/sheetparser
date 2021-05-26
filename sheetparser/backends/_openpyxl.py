@@ -17,7 +17,7 @@ from ..documents import (BORDER_TOP, BORDER_LEFT,
                          CellRange, SheetDocument, WorkbookDocument)
 from ..utils import EMPTY_CELL
 
-SHEETSTATE_VISIBLE = openpyxl.worksheet.Worksheet.SHEETSTATE_VISIBLE
+SHEETSTATE_VISIBLE = openpyxl.worksheet.worksheet.Worksheet.SHEETSTATE_VISIBLE
 logger = logging.getLogger('sheetparser')
 
 
@@ -180,7 +180,7 @@ class opxlExcelSheet(SheetDocument, CellRange):
         self.hidden_rows = {}
         if self.wksheet_fmt:
             for crange in self.wksheet_fmt.merged_cell_ranges:
-                clo, rlo, chi, rhi = openpyxl.utils.range_boundaries(crange)
+                clo, rlo, chi, rhi = openpyxl.utils.range_boundaries(str(crange))
                 for rowx in range(rlo, rhi + 1):
                     for colx in range(clo, chi + 1):
                         if (rlo, clo) != (rowx, colx):
@@ -232,7 +232,7 @@ class opxlExcelWorkbook(WorkbookDocument):
         return (self[s] for s in self.wbk_data.sheetnames)
 
     def __getitem__(self, name_or_id):
-        if isinstance(name_or_id, six.string_types):
+        if isinstance(name_or_id, str):
             return opxlExcelSheet(self.wbk_data[name_or_id],
                                   self.wbk_fmt[name_or_id]
                                   if self.wbk_fmt else None)

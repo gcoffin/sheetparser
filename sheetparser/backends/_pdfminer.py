@@ -124,7 +124,6 @@ class TextFrame(object):
 
     def split_horizontal(self):
         if not self.text:
-            yield self.text
             return
         char_size = self.position.w / len(self.text)
         x0 = self.position.x0
@@ -148,6 +147,9 @@ class TextFrame(object):
     def __repr__(self):
         return "<TF %s: %s>" % (self.position, repr(self.text))
 
+    def is_empty(self):
+        return self.text.strip() == ''
+
 
 class AlignedTextFrame(object):
     def __init__(self, y_int, frames=[]):
@@ -165,8 +167,10 @@ class AlignedTextFrame(object):
             return 0
         return intersect.size
 
-    def add_frame(self, text_frame):
-        self.frames.extend(text_frame.split_horizontal())
+    def append_frame(self, text_frame):
+        for tf in text_frame.split_horizontal():
+            if not tf.is_empty():
+                self.frames.append(tf)
         self.frames.sort()
 
     def merge(self, aligned):
@@ -217,7 +221,7 @@ class Page(object):
                     frame.position.y_int, [frame]))
         else:
             _, line = sorted(candidates)[-1]
-            line.add_frame(frame)
+            line.append_frame(frame)
 
     def add_text(self, text_frame):
         for tf in text_frame.split_vertical():

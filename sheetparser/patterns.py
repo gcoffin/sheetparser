@@ -1,7 +1,4 @@
 # coding: utf-8
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import abc
 import re
 from abc import abstractmethod
@@ -433,6 +430,17 @@ def no_horizontal(cells, line_count=0):
     return all(not cell.has_borders(BORDERS_HORIZONTAL) for cell in cells)
 
 
+def make_stop_function(stop):
+    if stop is None: 
+        return None
+    if isinstance(stop, str):
+        stop = re.compile(stop)
+    if isinstance(stop, re.Pattern):
+        regex = stop
+        stop = lambda line, _, regex=regex: regex.match(''.join(line))
+    return stop
+
+
 class Table(NamedPattern, LineIteratorPattern):
     """A range of cells read from a line iterator. The table
     transforms are read in sequence at 2 times: when new lines are
@@ -450,7 +458,7 @@ class Table(NamedPattern, LineIteratorPattern):
 
     @default(str_or_none, name='table')
     def __init__(self, table_args=DEFAULT_TRANSFORMS, stop=None, name='table'):
-        self.stop = stop or first_param(empty_line)
+        self.stop = make_stop_function(stop) or first_param(empty_line)
         assert callable(self.stop), "stop is not callable: %s" % stop
         self.table_args = table_args
         super(Table, self).__init__(name)
@@ -483,7 +491,7 @@ class FlexibleRange(WithLayoutPattern):
 
     @default(str_or_none, name='flexible')
     def __init__(self, layout, *patterns, **kwargs):
-        self.stop = kwargs.pop('stop', None) or first_param(empty_line)
+        self.stop = make_stop_function(kwargs.pop('stop', None)) or first_param(empty_line)
         self.min = kwargs.pop('min', 1)
         self.max = kwargs.pop('max', None)
         name = kwargs.pop('name')
